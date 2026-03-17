@@ -1,276 +1,554 @@
-# Scope Project Sistem Perpustakaan (Versi Sederhana, Lebih Detail)
+# Sistem Informasi Perpustakaan (Laravel)
 
-Dokumen ini merangkum scope, alur, struktur data, dan langkah implementasi Laravel untuk sistem perpustakaan yang tetap sederhana tetapi siap dieksekusi.
+Dokumentasi ini menjelaskan **alur sistem**, **desain database**, **model**, **controller**, **library yang digunakan**, dan **fitur utama** pada project `perpus`.
 
-## 1) Role, Akses, dan Modul
+---
 
-### Role
+## 1. Gambaran Umum
 
-- **Admin**: kelola user/petugas + semua data master + laporan + pengaturan denda.
-- **Petugas**: kelola buku/anggota + transaksi peminjaman/pengembalian + laporan.
-- **Anggota (opsional)**: lihat katalog + riwayat pinjam sendiri.
+Aplikasi ini adalah sistem perpustakaan berbasis Laravel dengan 2 peran utama:
 
-### Modul Utama
+-   **Admin**: mengelola master data, persetujuan peminjaman/perpanjangan, laporan PDF, serta konfigurasi aplikasi.
+-   **User (anggota)**: registrasi/login, melihat katalog, meminjam buku, mengembalikan buku, dan mengajukan perpanjangan.
 
-- **Auth & Role**
-  - Login/logout.
-  - Pembatasan menu berdasarkan role.
-- **Master Data**
-  - Kategori buku.
-  - Buku (dengan cover image).
-  - Anggota (foto opsional).
-- **Sirkulasi**
-  - Peminjaman (multi-buku).
-  - Pengembalian + hitung denda otomatis.
-- **Laporan & Export**
-  - Export Excel & PDF untuk buku, anggota, peminjaman (berdasarkan periode).
-  - Cetak PDF bukti peminjaman.
-- **(Opsional) QR Code**
-  - Untuk kartu anggota / kode peminjaman.
+Konsep utama sistem peminjaman:
 
-## 2) Alur (Flow) End-to-End
+1. User membuat transaksi peminjaman.
+2. Status approval awal: `PENDING`.
+3. Admin `APPROVE` atau `REJECT`.
+4. Stok buku **hanya dikurangi saat APPROVE**.
+5. Saat pengembalian, stok dikembalikan dan denda dihitung jika terlambat.
 
-### A. Flow Master Buku (dengan Cover)
+---
 
-1. Petugas buka menu **Buku** lalu klik **Tambah**.
-2. Isi data buku + upload cover.
-3. Sistem simpan cover ke `storage/app/public/books/...`.
-4. Sistem simpan path file ke `books.cover_path`.
-5. List buku menampilkan thumbnail cover.
+## 2. Tech Stack & Library
 
-Output: data buku tersimpan, cover dapat diakses dari `public/storage/...`.
+### Backend
 
-### B. Flow Peminjaman
+-   **Laravel Framework 12**
+-   **PHP 8.2+**
+-   **MySQL/MariaDB**
 
-1. Pilih anggota.
-2. Tambah buku (bisa lebih dari 1 judul).
-3. Sistem validasi:
-   - stok tiap buku cukup,
-   - anggota aktif (`is_active = true`),
-   - belum melewati batas pinjaman aktif (opsional).
-4. Simpan transaksi ke `loans` dan detail ke `loan_items`.
-5. Kurangi `books.quantity_available` sesuai qty pinjam.
+### Library Composer (Utama)
 
-Output: transaksi berstatus `BORROWED` dan stok berkurang otomatis.
+-   `spatie/laravel-permission`
 
-### C. Flow Pengembalian + Denda
+    -   Manajemen Role & Permission (RBAC).
+    -   Digunakan pada middleware seperti `permission:books.index`, `permission:users.edit`, dll.
 
-1. Buka detail transaksi dengan status `BORROWED`.
-2. Klik **Return/Kembalikan**.
-3. Sistem hitung:
-   - `returned_at = today`
-   - `late_days = max(0, today - due_date)`
-   - `fine_total = late_days × fine_per_day`
-   - `status = RETURNED`
-4. Sistem kembalikan stok dari item transaksi.
+-   `yajra/laravel-datatables-oracle`
 
-Output: transaksi selesai, denda tercatat, stok kembali bertambah.
+    -   Server-side DataTables (JSON response untuk tabel interaktif).
+    -   Dipakai pada modul Users, Roles, Permissions, Categories, Books, Members, Loans.
 
-### D. Flow Laporan & Export
+-   `maatwebsite/excel`
 
-1. User pilih filter tanggal, status, dan (opsional) anggota/petugas.
-2. Sistem tampilkan rekap di layar.
-3. User klik:
-   - **Export Excel** (`.xlsx`)
-   - **Export PDF** (`.pdf`)
+    -   Export template import buku.
+    -   Import data buku dari file Excel (`xlsx/xls`) dengan validasi header dan validasi per-baris.
 
-Output: file laporan terunduh sesuai filter aktif.
+-   `barryvdh/laravel-dompdf`
 
-## 3) Desain Database (Final + Field Gambar)
+    -   Export laporan transaksi peminjaman dalam format PDF.
 
-### Tambahan Field Image
+-   `laravel/ui`
 
-#### Tabel `books`
+    -   Dukungan scaffolding UI/auth berbasis Bootstrap pada ekosistem Laravel.
 
-- `cover_path` (`string`, nullable) → path file cover.
-- (opsional) `cover_original_name` (`string`, nullable).
-- (opsional) `cover_mime` (`string`, nullable).
-- (opsional) `cover_size` (`integer`, nullable).
+-   `laravel/tinker`
+    -   Tool debugging/interaksi data dari CLI.
 
-Minimal implementasi cukup `cover_path`.
+### Frontend Build Tools
 
-#### Tabel `members`
+-   `vite` + `laravel-vite-plugin`
+-   `bootstrap` + `@popperjs/core`
+-   `tailwindcss`, `postcss`, `autoprefixer`, `sass`
+-   `axios`
 
-- `photo_path` (`string`, nullable).
+### Library Dev
 
-### Skema Tabel Ringkas
+-   `phpunit/phpunit` (testing)
+-   `laravel/pint` (formatter)
+-   `fruitcake/laravel-debugbar` (debug lokal)
 
-#### `categories`
+---
 
-- `id`, `name`, `timestamps`.
+## 3. Arsitektur Singkat
 
-#### `books`
+Pola yang dipakai mengikuti MVC Laravel:
 
-- `id`
-- `category_id` (FK)
-- `isbn` (nullable)
-- `title`
-- `author`
-- `publisher` (nullable)
-- `year` (nullable)
-- `rack_location` (nullable)
-- `quantity_total` (int)
-- `quantity_available` (int)
-- `cover_path` (nullable)
-- `timestamps`
+-   **Model (`app/Models`)**
 
-#### `members`
+    -   Menangani representasi tabel, relasi, fillable, cast, dan helper domain tertentu (misal generate kode).
 
-- `id`
-- `member_code` (unique)
-- `name`
-- `class` (nullable)
-- `type` (`student`/`teacher`, optional)
-- `phone`, `address` (nullable)
-- `is_active` (boolean)
-- `photo_path` (nullable, opsional)
-- `timestamps`
+-   **Controller (`app/Http/Controllers`)**
 
-#### `users`
+    -   Menangani alur request, validasi, authorization role/permission, transaksi database, dan response view/JSON.
 
-- `id`, `name`, `email`, `password`, `role`, `timestamps`.
+-   **Migration (`database/migrations`)**
+    -   Mendefinisikan skema tabel, foreign key, enum status, unique key, default value.
 
-#### `loans`
+---
 
-- `id`
-- `loan_code` (unique)
-- `member_id` (FK)
-- `user_id` (FK)
-- `loaned_at`
-- `due_date`
-- `returned_at` (nullable)
-- `status` (`BORROWED`/`RETURNED`)
-- `fine_total` (int default 0)
-- `timestamps`
+## 4. Desain Database (Tabel & Relasi)
 
-#### `loan_items`
+## 4.1 Entitas Inti
 
-- `id`
-- `loan_id` (FK)
-- `book_id` (FK)
-- `qty` (int default 1)
-- `timestamps`
+### `users`
 
-### Index Penting
+-   Data akun login.
+-   Kolom utama: `name`, `email (unique)`, `password`.
 
-- `books(title)` untuk pencarian cepat.
-- `loans(status, loaned_at)` untuk laporan periodik.
-- (disarankan) `loan_items(loan_id)` dan `loan_items(book_id)` untuk join cepat.
+### `members`
 
-## 4) Rekomendasi Penyimpanan Image (Laravel Storage)
+-   Profil anggota perpustakaan.
+-   Relasi 1:1 ke `users` melalui `user_id`.
+-   Kolom penting:
+    -   `member_code (unique)`
+    -   `class`, `type` (`student|teacher`), `phone`, `address`
+    -   `is_active` (default `true`)
 
-- Simpan file di `storage/app/public/books/`.
-- Akses file melalui symlink `public/storage/...`.
-- Jalankan:
+### `categories`
 
-```bash
-php artisan storage:link
+-   Master kategori buku (`name`).
+
+### `books`
+
+-   Data buku dan stok.
+-   FK: `category_id -> categories.id`.
+-   Kolom penting:
+    -   bibliografi: `isbn`, `title`, `author`, `publisher`, `year`
+    -   lokasi: `rack_location`
+    -   stok: `quantity_total`, `quantity_available`
+    -   media: `cover_path`
+
+### `loans`
+
+-   Header transaksi peminjaman.
+-   FK:
+    -   `member_id -> members.id`
+    -   `user_id -> users.id` (pemilik transaksi)
+    -   `approved_by -> users.id` (admin approver, nullable)
+-   Kolom penting:
+    -   `loan_code (unique)`
+    -   tanggal: `loaned_at`, `due_date`, `returned_at`
+    -   status transaksi: `status` (`BORROWED|RETURNED`)
+    -   status persetujuan: `approval_status` (`PENDING|APPROVED|REJECTED`)
+    -   `approved_at`, `approval_note`, `fine_total`
+
+### `loan_items`
+
+-   Detail item buku dalam satu transaksi peminjaman.
+-   FK:
+    -   `loan_id -> loans.id`
+    -   `book_id -> books.id`
+-   Kolom: `qty`.
+
+### `loan_extensions`
+
+-   Request perpanjangan masa pinjam.
+-   FK:
+    -   `loan_id -> loans.id`
+    -   `requested_by -> users.id`
+    -   `approved_by -> users.id` (nullable)
+-   Kolom penting:
+    -   `extension_days`
+    -   `new_due_date`
+    -   `status` (`PENDING|APPROVED|REJECTED`)
+    -   `reason`, `admin_note`, `approved_at`
+
+### `setting_apps`
+
+-   Konfigurasi aplikasi (single row setting).
+-   Kolom:
+    -   `name_app`, `short_cut_app`, `image`
+    -   `fine_per_day` (default 1000)
+    -   `extension_days` (default 7)
+
+---
+
+## 4.2 Tabel RBAC (Spatie Permission)
+
+Library `spatie/laravel-permission` membuat tabel:
+
+-   `permissions`
+-   `roles`
+-   `model_has_permissions`
+-   `model_has_roles`
+-   `role_has_permissions`
+
+Seeder default membuat role:
+
+-   `admin`
+-   `user`
+
+Admin mendapat seluruh permission, user mendapat permission terbatas sesuai kebutuhan modul user.
+
+---
+
+## 4.3 Ringkasan Relasi
+
+-   `User` **hasOne** `Member`
+-   `Member` **belongsTo** `User`
+-   `Category` **hasMany** `Book`
+-   `Book` **belongsTo** `Category`
+-   `Member` **hasMany** `Loan`
+-   `Loan` **belongsTo** `Member`
+-   `Loan` **belongsTo** `User` (creator)
+-   `Loan` **belongsTo** `User` (approvedBy via `approved_by`)
+-   `Loan` **hasMany** `LoanItem`
+-   `LoanItem` **belongsTo** `Loan`
+-   `LoanItem` **belongsTo** `Book`
+-   `Loan` **hasMany** `LoanExtension`
+-   `LoanExtension` **belongsTo** `Loan`
+-   `LoanExtension` **belongsTo** `User` (requestedBy)
+-   `LoanExtension` **belongsTo** `User` (approvedBy)
+
+## 4.4 Diagram ERD (Mermaid)
+
+```mermaid
+erDiagram
+        USERS ||--o| MEMBERS : has_one
+        USERS ||--o{ LOANS : creates
+        USERS ||--o{ LOANS : approves
+        USERS ||--o{ LOAN_EXTENSIONS : requests
+        USERS ||--o{ LOAN_EXTENSIONS : approves
+
+        CATEGORIES ||--o{ BOOKS : contains
+
+        MEMBERS ||--o{ LOANS : borrows
+        LOANS ||--o{ LOAN_ITEMS : has_items
+        BOOKS ||--o{ LOAN_ITEMS : borrowed_in
+
+        LOANS ||--o{ LOAN_EXTENSIONS : extended_by
+
+        USERS {
+            bigint id PK
+            string name
+            string email UK
+            string password
+        }
+
+        MEMBERS {
+            bigint id PK
+            string member_code UK
+            bigint user_id FK
+            string name
+            bool is_active
+        }
+
+        CATEGORIES {
+            bigint id PK
+            string name
+        }
+
+        BOOKS {
+            bigint id PK
+            bigint category_id FK
+            string title
+            int quantity_total
+            int quantity_available
+        }
+
+        LOANS {
+            bigint id PK
+            string loan_code UK
+            bigint member_id FK
+            bigint user_id FK
+            date due_date
+            enum status
+            enum approval_status
+            bigint approved_by FK
+            int fine_total
+        }
+
+        LOAN_ITEMS {
+            bigint id PK
+            bigint loan_id FK
+            bigint book_id FK
+            int qty
+        }
+
+        LOAN_EXTENSIONS {
+            bigint id PK
+            bigint loan_id FK
+            bigint requested_by FK
+            bigint approved_by FK
+            int extension_days
+            date new_due_date
+            enum status
+        }
 ```
 
-### Validasi Upload Cover (Disarankan)
+---
 
-- file harus image,
-- ukuran maksimal 2MB,
-- format: `jpg`, `jpeg`, `png`, `webp`.
+## 5. Desain Model (Ringkas per Model)
 
-Contoh rule Laravel:
+### `App\Models\User`
 
-- `nullable|image|mimes:jpg,jpeg,png,webp|max:2048`
+-   Extend `Authenticatable`.
+-   Trait: `HasRoles` (Spatie), `HasFactory`, `Notifiable`.
+-   Relasi: `member()`.
 
-## 5) Langkah Implementasi (Urutan Aman)
+### `App\Models\Member`
 
-### Step 1 — Setup Project + Auth
+-   Fillable profil anggota.
+-   Relasi: `user()`, `loans()`.
+-   Logic domain: `generateNextMemberCode()` menghasilkan format `MBR-0001`.
 
-- Laravel + Breeze untuk login.
-- Tambahkan kolom `role` pada tabel `users`.
-- Buat middleware role untuk proteksi route.
+### `App\Models\Category`
 
-### Step 2 — Migration & Model
+-   Master kategori.
+-   Relasi: `books()`.
 
-```bash
-php artisan make:model Category -mcr
-php artisan make:model Book -mcr
-php artisan make:model Member -mcr
-php artisan make:model Loan -m
-php artisan make:model LoanItem -m
+### `App\Models\Book`
+
+-   Fillable bibliografi + stok.
+-   Relasi: `category()`, `loanItems()`.
+
+### `App\Models\Loan`
+
+-   Fillable transaksi + approval.
+-   Cast date/datetime.
+-   Relasi: `member()`, `user()`, `approvedBy()`, `loanItems()`, `extensions()`.
+-   Logic domain: `generateLoanCode()` dengan format `LN-0001`.
+
+### `App\Models\LoanItem`
+
+-   Detail buku dalam transaksi.
+-   Relasi: `loan()`, `book()`.
+
+### `App\Models\LoanExtension`
+
+-   Data request perpanjangan.
+-   Relasi: `loan()`, `requestedBy()`, `approvedBy()`.
+-   Logic domain: `canRequestExtension($loanId)` dengan aturan:
+    -   pinjaman harus `BORROWED`
+    -   masih dalam window keterlambatan maksimum
+    -   maksimal 2 kali extension disetujui per transaksi
+
+### `App\Models\SettingApp`
+
+-   Menyimpan konfigurasi global (nama app, logo, denda/hari, default extension days).
+
+> Catatan: `Transaction` model ada di repository namun belum menjadi bagian alur utama perpustakaan saat ini.
+
+---
+
+## 6. Desain Controller & Tanggung Jawab
+
+### `AuthController`
+
+-   Login (`authenticate`) dengan validasi email/password.
+-   Register (`register`):
+    -   buat `User`
+    -   assign role `user`
+    -   buat `Member`
+    -   dibungkus `DB::transaction()`
+-   Logout dan reset session.
+
+### `HomeController`
+
+-   Dashboard dinamis berdasar role:
+    -   `admin`: statistik sistem (buku, member, pinjaman, denda, approval, stok menipis, dll)
+    -   `user`: ringkasan pinjaman aktif dan histori pinjaman pribadi
+
+### `PermissionsController`, `RoleController`, `UserController`
+
+-   CRUD RBAC (permission, role, user).
+-   Integrasi DataTables untuk listing.
+-   `UserController` mengelola assign role user.
+
+### `CategoryController`
+
+-   CRUD kategori buku.
+-   Proteksi middleware permission dan listing DataTables.
+
+### `BookController`
+
+-   CRUD buku + upload cover.
+-   Katalog buku untuk role `user` (`catalog`).
+-   Import buku via Excel (`import`) dengan:
+    -   validasi tipe file
+    -   validasi header template
+    -   validasi setiap baris
+    -   transaksi DB saat insert
+-   Export template import (`downloadImportTemplate`).
+
+### `MemberController`
+
+-   Menampilkan data member (read-only di modul ini).
+
+### `LoanController`
+
+-   `index`: daftar pinjaman (admin semua, user milik sendiri).
+-   `create/store`: user membuat pinjaman (status approval `PENDING`).
+-   `approve/reject`: admin proses persetujuan.
+-   `returnLoan`: proses pengembalian + hitung denda + restore stok.
+-   `exportPdf`: export laporan PDF dengan filter status, approval, dan rentang tanggal.
+-   `destroy`: hapus pinjaman `PENDING` (admin only).
+
+### `LoanExtensionController`
+
+-   User:
+    -   list request sendiri (`index`)
+    -   form request (`create`)
+    -   submit request (`store`)
+-   Admin:
+    -   list request pending (`adminIndex`)
+    -   approve/reject request
+-   Saat approve extension: `due_date` pada `loans` diperbarui.
+
+### `SettingAppController`
+
+-   Manajemen pengaturan aplikasi (nama, shortcut, logo, denda/hari, default extension).
+-   Aturan data tunggal (single setting row).
+
+### `ErrorTestController`
+
+-   Endpoint testing halaman error sesuai kode HTTP (khusus saat `APP_DEBUG=true`).
+
+---
+
+## 7. Alur Bisnis Utama
+
+## 7.1 Alur Registrasi
+
+1. User isi form register.
+2. Sistem validasi input.
+3. Sistem membuat akun `users`.
+4. Sistem assign role `user`.
+5. Sistem membuat data `members` otomatis.
+6. User login otomatis dan diarahkan ke `/home`.
+
+## 7.2 Alur Peminjaman Buku
+
+1. User memilih buku (katalog) dan membuat transaksi.
+2. Sistem validasi:
+    - member aktif
+    - maksimal 5 pinjaman aktif
+    - tidak ada duplikasi judul dalam satu transaksi
+    - stok tersedia
+3. Sistem simpan `loans` (`approval_status=PENDING`) + `loan_items`.
+4. Admin review:
+    - **APPROVE**: stok buku dikurangi sesuai `qty`.
+    - **REJECT**: tidak ada perubahan stok.
+
+## 7.3 Alur Pengembalian Buku
+
+1. Pengembalian hanya untuk pinjaman `APPROVED` dan `BORROWED`.
+2. Sistem hitung keterlambatan terhadap `due_date`.
+3. Denda dihitung: `late_days * fine_per_day`.
+4. Stok buku dikembalikan (`quantity_available` bertambah).
+5. Status pinjaman menjadi `RETURNED`.
+
+## 7.4 Alur Perpanjangan Peminjaman
+
+1. User ajukan extension pada pinjaman miliknya.
+2. Sistem cek kelayakan via `LoanExtension::canRequestExtension()`.
+3. Request disimpan `PENDING`.
+4. Admin `APPROVE/REJECT`:
+    - jika approve, `loans.due_date` diupdate ke `new_due_date`.
+
+## 7.5 Alur Laporan PDF
+
+1. Admin/user memanggil endpoint export PDF.
+2. Filter opsional:
+    - status transaksi (`BORROWED/RETURNED`)
+    - status approval (`PENDING/APPROVED/REJECTED`)
+    - rentang tanggal pinjam
+3. Sistem generate PDF via DomPDF.
+
+## 7.6 Diagram Alur Proses (Mermaid)
+
+```mermaid
+flowchart TD
+    A[User pilih buku & isi form pinjam] --> B{Validasi request}
+    B -- Gagal --> B1[Return error validasi]
+    B -- Lolos --> C[Simpan loans + loan_items\nstatus BORROWED, approval PENDING]
+    C --> D[Admin review transaksi]
+    D -->|APPROVE| E[Kurangi stok buku]
+    D -->|REJECT| F[Set approval REJECTED]
+    E --> G[Pinjaman aktif berjalan]
+
+    G --> H{User kembalikan buku?}
+    H -- Ya --> I[Hitung telat & denda\nlate_days x fine_per_day]
+    I --> J[Tambah stok buku kembali]
+    J --> K[Set status RETURNED]
+
+    H -- Ajukan perpanjangan --> L{Validasi canRequestExtension}
+    L -- Gagal --> L1[Return error perpanjangan]
+    L -- Lolos --> M[Simpan loan_extensions PENDING]
+    M --> N[Admin approve/reject extension]
+    N -->|APPROVE| O[Update loans.due_date = new_due_date]
+    N -->|REJECT| P[Status extension REJECTED]
 ```
 
-### Step 3 — CRUD Kategori, Buku, Anggota
+---
 
-- Buku wajib mendukung upload cover.
-- Form create/edit punya input file cover.
-- Saat store/update:
-  - upload via `Storage::disk('public')->putFile('books', $file)`
-  - simpan path ke `cover_path`
-  - hapus cover lama saat diganti (agar storage bersih)
+## 8. Fitur Aplikasi (Checklist)
 
-### Step 4 — Peminjaman/Pengembalian
+-   [x] Autentikasi login/register/logout.
+-   [x] Role & Permission berbasis Spatie.
+-   [x] Dashboard admin dan dashboard user.
+-   [x] CRUD Users, Roles, Permissions.
+-   [x] CRUD Kategori buku.
+-   [x] CRUD Buku + upload cover.
+-   [x] Katalog buku untuk user.
+-   [x] Import buku dari Excel + template import.
+-   [x] Manajemen data member.
+-   [x] Transaksi peminjaman multi-item.
+-   [x] Approval pinjaman oleh admin.
+-   [x] Pengembalian buku + perhitungan denda.
+-   [x] Perpanjangan peminjaman + approval admin.
+-   [x] Export laporan pinjaman ke PDF.
+-   [x] Pengaturan aplikasi (logo, nama, denda/hari, default extension).
 
-- Generate `loan_code` otomatis (unik).
-- Gunakan DB transaction agar update stok konsisten.
-- Pastikan tidak bisa return dua kali untuk transaksi yang sama.
+---
 
-### Step 5 — Export Excel
+## 9. Route Utama
 
-Install package:
+### Public
 
-```bash
-composer require maatwebsite/excel
-```
+-   `/login`, `/register`
 
-Buat export class:
+### Protected (`auth`)
 
-```bash
-php artisan make:export BooksExport --model=Book
-php artisan make:export LoansExport
-php artisan make:export MembersExport --model=Member
-```
+-   `/home`
+-   `/settings`
+-   `/catalog`
+-   Resource: `/users`, `/roles`, `/permissions`, `/categories`, `/books`
+-   `/members`
+-   `/loans` + action approve/reject/return/export pdf
+-   `/loan-extensions` + admin endpoint approval
 
-Controller report (contoh):
+---
 
-- `exportBooksExcel()`
-- `exportMembersExcel()`
-- `exportLoansExcel(Request $request)` (filter periode/status)
+## 10. Seeder Default
 
-### Step 6 — Export PDF (DOMPDF)
+Seeder yang dijalankan:
 
-Install package:
+-   `PermissionTableSeeder`
+-   `RoleTableSeeder`
+-   `UserTableSeeder`
 
-```bash
-composer require barryvdh/laravel-dompdf
-```
+Default akun admin:
 
-Buat view PDF:
+-   Email: `admin@gmail.com`
+-   Password: `123456`
 
-- `resources/views/pdf/loans-report.blade.php`
-- `resources/views/pdf/loan-receipt.blade.php`
+---
 
-Controller (contoh):
+## 11. Instalasi & Menjalankan Project
 
-- `exportLoansPdf(Request $request)`
-- `printLoanReceiptPdf(Loan $loan)`
+## 11.1 Prasyarat
 
-## 6) Halaman UI Wajib (Siap Demo/Screenshot)
+-   PHP 8.2+
+-   Composer 2+
+-   Node.js 18+
+-   MySQL/MariaDB
 
-- Login
-- Dashboard
-- Kategori (list + form)
-- Buku (list dengan thumbnail cover)
-- Form tambah/edit buku (upload cover)
-- Anggota (list + form)
-- Peminjaman (form multi-buku)
-- List peminjaman (filter status/tanggal)
-- Detail peminjaman (return + cetak bukti PDF)
-- Laporan (filter + export Excel/PDF)
+## 12. Catatan Implementasi Penting
 
-## 7) Aturan Bisnis Minimum (Agar Tidak Bolak-Balik)
-
-Tetapkan sejak awal:
-
-- Durasi pinjam default (mis. 7 hari).
-- Denda per hari (mis. Rp1.000/hari).
-- Batas maksimal buku aktif per anggota (mis. 3 buku).
-- Apakah anggota dengan tunggakan denda boleh meminjam lagi.
-- Apakah stok boleh `0` tetap tampil di katalog.
-
-Dengan aturan ini, implementasi controller dan validasi menjadi konsisten dari awal.
+-   Stok buku tidak langsung berkurang saat user membuat transaksi, melainkan saat admin approve.
+-   Semua operasi kritikal (register + pembuatan member, import buku, approve pinjaman) menggunakan validasi dan/atau transaksi database.
+-   Nilai denda per hari dan default durasi perpanjangan bersumber dari tabel `setting_apps`.
