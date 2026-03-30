@@ -548,558 +548,524 @@ Default akun admin:
 -   MySQL/MariaDB
 
 
-# API Documentation - Import/Export Books
+# 📚 TUTORIAL SEDERHANA EXPORT & IMPORT BUKU
 
-## 📚 Complete Reference Guide
-
----
-
-## Endpoint 1: Download Import Template
-
-### Request
-
-```
-GET /books/import/template
-```
-
-### cURL Example
-
-```bash
-curl -X GET "http://localhost:8000/books/import/template" \
-  --output "template_import_buku.xlsx"
-```
-
-### PowerShell Example
-
-```powershell
-$url = "http://localhost:8000/books/import/template"
-$outputFile = "C:\Downloads\template_import_buku.xlsx"
-Invoke-WebRequest -Uri $url -OutFile $outputFile
-```
-
-### JavaScript/Fetch Example
-
-```javascript
-fetch("http://localhost:8000/books/import/template")
-    .then((response) => response.blob())
-    .then((blob) => {
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "template_import_buku.xlsx";
-        a.click();
-    });
-```
-
-### Response
-
--   **Content-Type**: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
--   **Status Code**: 200 OK
--   **Body**: Binary Excel file (.xlsx)
-
-### Sample Output (Baris 1-3):
-
-```
-category_id | isbn         | title           | author        | publisher     | year | rack_location | quantity_total | quantity_available
-1           | 9786020324781| Laskar Pelangi  | Andrea Hirata | Bentang Pustaka| 2005 | A1-03         | 10             | 10
-2           | 9786230001112| Belajar Laravel | John Developer| Informatika   | 2024 | T2-01         | 5              | 5
-```
+**Versi Simpel** | Fokus pada kode yang dipakai | Tanpa teori berlebihan
 
 ---
 
-## Endpoint 2: Import Data Books
+## 📌 QUICK START - 3 File Utama
 
-### Request
+Ada 3 file utama yang perlu dimengerti:
 
-```
-POST /books/import
-Content-Type: multipart/form-data
-```
-
-### Form Data
-
-| Field       | Type | Required | Notes                    |
-| ----------- | ---- | -------- | ------------------------ |
-| import_file | File | Yes      | .xlsx atau .xls, max 5MB |
-
-### cURL Example
-
-```bash
-curl -X POST "http://localhost:8000/books/import" \
-  -F "import_file=@/path/to/template_import_buku.xlsx" \
-  -H "X-CSRF-TOKEN: your_csrf_token"
-```
-
-### JavaScript Fetch Example
-
-```javascript
-const formData = new FormData();
-formData.append("import_file", fileInput.files[0]);
-
-fetch("/books/import", {
-    method: "POST",
-    body: formData,
-    headers: {
-        "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]')
-            .content,
-    },
-})
-    .then((response) => response.json())
-    .then((data) => console.log(data));
-```
-
-### jQuery AJAX Example
-
-```javascript
-$("#importForm").on("submit", function (e) {
-    e.preventDefault();
-
-    const formData = new FormData(this);
-
-    $.ajax({
-        url: "/books/import",
-        type: "POST",
-        data: formData,
-        processData: false,
-        contentType: false,
-        success: function (response) {
-            console.log("Success:", response);
-            // Reload halaman atau tampilkan success message
-        },
-        error: function (response) {
-            console.log("Error:", response);
-            // Tampilkan error message
-        },
-    });
-});
-```
-
-### Response Success (302 Redirect)
-
-```
-Location: /books
-Set-Cookie: laravel_session=...
-Message: 5 buku berhasil diimport.
-```
-
-### Response Error Examples
-
-**Error 1: Invalid File Format**
-
-```
-HTTP 422 Unprocessable Entity
-
-Error: "The import file must be a file of type: xlsx, xls"
-```
-
-**Error 2: Invalid Headers**
-
-```
-HTTP 302 Redirect
-Location: /books
-Message: "Format header file Excel tidak sesuai template default."
-```
-
-**Error 3: Validation Error on Rows**
-
-```
-HTTP 302 Redirect
-Location: /books
-Message: "Import dibatalkan karena ada data tidak valid. Perbaiki lalu upload ulang."
-
-Details:
-- Baris 3: category_id field is required
-- Baris 5: quantity_available tidak boleh lebih besar dari quantity total
-- Baris 7: isbn field must be a string
-```
-
-**Error 4: No Valid Data**
-
-```
-HTTP 302 Redirect
-Location: /books
-Message: "Tidak ada data yang bisa diimport."
-```
+1. **BooksImportTemplateExport.php** → Generate template Excel
+2. **BooksTemplateReadImport.php** → Baca file Excel
+3. **BookController.php** (2 method) → Proses download & import
 
 ---
 
-## Data Validation Rules per Field
+# 1. FILE: BooksImportTemplateExport.php
 
-### category_id
+**Lokasi**: `app/Exports/BooksImportTemplateExport.php`
 
-```
-Rules: required|integer|exists:categories,id
-
-Error Messages:
-- "The category_id field is required"
-- "The category_id field must be an integer"
-- "The selected category_id is invalid"
-
-Valid Values: ID dari kategori yang ada di tabel categories
-Invalid Values: 999 (jika tidak ada), "ABC" (bukan integer)
-```
-
-### isbn
-
-```
-Rules: nullable|string|max:50
-
-Error Messages:
-- "The isbn field must be a string"
-- "The isbn field may not be greater than 50 characters"
-
-Valid Values: "9786020324781", "" (kosong), null
-Invalid Values: 9786020324781123456 (>50 char)
-```
-
-### title
-
-```
-Rules: required|string|max:255
-
-Error Messages:
-- "The title field is required"
-- "The title field must be a string"
-- "The title field may not be greater than 255 characters"
-
-Valid Values: "Laskar Pelangi", "Buku dengan Judul Panjang"
-Invalid Values: "" (kosong), 123 (bukan string)
-```
-
-### author
-
-```
-Rules: required|string|max:255
-
-Error Messages:
-- "The author field is required"
-- "The author field must be a string"
-- "The author field may not be greater than 255 characters"
-
-Valid Values: "Andrea Hirata", "John Developer"
-Invalid Values: "" (kosong)
-```
-
-### publisher
-
-```
-Rules: nullable|string|max:255
-
-Error Messages:
-- "The publisher field must be a string"
-- "The publisher field may not be greater than 255 characters"
-
-Valid Values: "Bentang Pustaka", "" (kosong), null
-```
-
-### year
-
-```
-Rules: nullable|integer|digits:4
-
-Error Messages:
-- "The year field must be an integer"
-- "The year field must be exactly 4 characters"
-
-Valid Values: 2005, 2024, 2025, "" (kosong), null
-Invalid Values: "2024" (string), 24 (2 digit), 202 (3 digit)
-```
-
-### rack_location
-
-```
-Rules: nullable|string|max:100
-
-Error Messages:
-- "The rack_location field must be a string"
-- "The rack_location field may not be greater than 100 characters"
-
-Valid Values: "A1-03", "T2-01", "Rak A Baris 1", "" (kosong)
-```
-
-### quantity_total
-
-```
-Rules: required|integer|min:0
-
-Error Messages:
-- "The quantity_total field is required"
-- "The quantity_total field must be an integer"
-- "The quantity_total field must be at least 0"
-
-Valid Values: 0, 1, 10, 100
-Invalid Values: "" (kosong), -5 (negatif), "10" (string)
-```
-
-### quantity_available
-
-```
-Rules: required|integer|min:0|<=quantity_total
-
-Error Messages:
-- "The quantity_available field is required"
-- "The quantity_available field must be an integer"
-- "The quantity_available field must be at least 0"
-- "quantity_available tidak boleh lebih besar dari quantity total"
-
-Valid Values: 0, 5, 10 (jika total >= 10)
-Invalid Values: -1 (negatif), 15 (jika total = 10)
-```
-
----
-
-## Example Import Data
-
-### Valid Data
-
-**Example 1 - Complete Data**
-
-```
-category_id: 1
-isbn: 9786020324781
-title: Laskar Pelangi
-author: Andrea Hirata
-publisher: Bentang Pustaka
-year: 2005
-rack_location: A1-03
-quantity_total: 10
-quantity_available: 8
-```
-
-**Example 2 - Minimal (Required Only)**
-
-```
-category_id: 1
-isbn: (kosong)
-title: Novel Indonesia
-author: Nama Penulis
-publisher: (kosong)
-year: (kosong)
-rack_location: (kosong)
-quantity_total: 5
-quantity_available: 3
-```
-
-**Example 3 - Multiple Books**
-
-```
-[
-  {
-    "category_id": 1,
-    "isbn": "9786020324781",
-    "title": "Laskar Pelangi",
-    "author": "Andrea Hirata",
-    "publisher": "Bentang",
-    "year": 2005,
-    "rack_location": "A1-03",
-    "quantity_total": 10,
-    "quantity_available": 8
-  },
-  {
-    "category_id": 2,
-    "isbn": "9786230001112",
-    "title": "Laravel Programming",
-    "author": "John Developer",
-    "publisher": "Tech Publisher",
-    "year": 2024,
-    "rack_location": "T2-01",
-    "quantity_total": 5,
-    "quantity_available": 4
-  }
-]
-```
-
----
-
-## Excel Template Format
-
-### Column Order (PENTING - JANGAN UBAH)
-
-1. category_id
-2. isbn
-3. title
-4. author
-5. publisher
-6. year
-7. rack_location
-8. quantity_total
-9. quantity_available
-
-### Excel Sample
-
-```
-Row 1 (Header):
-category_id | isbn | title | author | publisher | year | rack_location | quantity_total | quantity_available
-
-Row 2 (Data):
-1 | 9786020324781 | Laskar Pelangi | Andrea Hirata | Bentang | 2005 | A1-03 | 10 | 8
-
-Row 3 (Data):
-2 | 9786230001112 | Laravel 11 | John Developer | Tech | 2024 | T2-01 | 5 | 4
-```
-
----
-
-## Success Response Flow
-
-```
-User Upload File
-       ↓
-[Validate file format]
-  ├─ Valid → Continue
-  └─ Invalid → Error: File must be .xlsx or .xls
-       ↓
-[Check header structure]
-  ├─ Valid → Continue
-  └─ Invalid → Error: Header format not matceed
-       ↓
-[Read Excel data]
-       ↓
-[Validate each row]
-  ├─ Row valid → Add to payloads
-  └─ Row invalid → Add to errors
-       ↓
-[Check payloads]
-  ├─ Has valid data → Continue to step below
-  ├─ No valid data → Error: No data to import
-  └─ Has errors → Error: Invalid data in some rows
-       ↓
-[Database Transaction]
-  ├─ Success → Commit
-  └─ Failed → Rollback all
-       ↓
-[Redirect to /books]
-  └─ Success: X buku berhasil diimport
-```
-
----
-
-## Error Flow
-
-```
-User Upload File
-       ↓
-File Format Error?
-  ├─ YES → Redirect with error message
-  └─ NO → Continue
-       ↓
-Header Mismatch?
-  ├─ YES → Redirect with error message
-  └─ NO → Continue
-       ↓
-Process All Rows
-  ├─ All valid → Process insert
-  ├─ All invalid → Redirect with error list
-  └─ Mix valid/invalid → Reject all, redirect with error list
-       ↓
-Database Error?
-  ├─ YES → Rollback transaction, error message
-  └─ NO → Success message
-```
-
----
-
-## Performance Metrics
-
-| File Size | Rows      | Estimated Time | Status         |
-| --------- | --------- | -------------- | -------------- |
-| < 1MB     | < 500     | < 1s           | ✅ Optimal     |
-| 1-3MB     | 500-2000  | 1-3s           | ✅ Good        |
-| 3-5MB     | 2000-5000 | 3-5s           | ⚠️ Acceptable  |
-| > 5MB     | > 5000    | N/A            | ❌ Not Allowed |
-
----
-
-## Database Transaction Details
-
-```php
-// Semua data diinsert dalam satu transaction
-DB::transaction(function () use ($payloads) {
-    foreach ($payloads as $payload) {
-        Book::create($payload);
-    }
-});
-
-// Jika ADA ERROR di tengah proses:
-// - Semua data yang sudah diinsert akan di-ROLLBACK
-// - Database state kembali seperti sebelum import
-// - User mendapat error message
-
-// Jika SEMUA BERHASIL:
-// - Semua data di-COMMIT ke database
-// - User mendapat success message
-```
-
----
-
-## Custom Implementation
-
-### Extend BooksImportTemplateExport untuk Export Semua Buku
+**Tujuan**: Generate file Excel template kosong untuk user isi
 
 ```php
 <?php
 
 namespace App\Exports;
 
-use App\Models\Book;
-use Maatwebsite\Excel\Concerns\FromCollection;
+use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithHeadings;
-use Maatwebsite\Excel\Concerns\WithMapping;
 
-class BooksExport implements FromCollection, WithHeadings, WithMapping
+class BooksImportTemplateExport implements FromArray, WithHeadings
 {
-    public function collection()
-    {
-        // Ambil semua buku dari database
-        return Book::with('category')->get();
-    }
+    // Cara pakai:
+    // 1. Definisikan header (nama kolom di baris 1)
+    // 2. Berikan sample data (contoh isi untuk user follow)
 
+    /**
+     * Header: Nama kolom di row 1
+     * Penting: Urutan harus sama dengan saat import!
+     */
     public function headings(): array
     {
         return [
-            'ID',
-            'Category',
-            'ISBN',
-            'Title',
-            'Author',
-            'Publisher',
-            'Year',
-            'Rack Location',
-            'Total Quantity',
-            'Available Quantity',
-            'Created At',
+            'category_id',          // Kolom A
+            'isbn',                 // Kolom B
+            'title',                // Kolom C
+            'author',               // Kolom D
+            'publisher',            // Kolom E
+            'year',                 // Kolom F
+            'rack_location',        // Kolom G
+            'quantity_total',       // Kolom H
+            'quantity_available',   // Kolom I
         ];
     }
 
-    public function map($book): array
+    /**
+     * Sample data: Baris data contoh untuk user pahami
+     * Ini akan muncul di baris 2-3 setelah header
+     */
+    public function array(): array
     {
         return [
-            $book->id,
-            $book->category->name,
-            $book->isbn,
-            $book->title,
-            $book->author,
-            $book->publisher,
-            $book->year,
-            $book->rack_location,
-            $book->quantity_total,
-            $book->quantity_available,
-            $book->created_at->format('Y-m-d H:i:s'),
+            // Contoh buku 1
+            ['1', '9786020324781', 'Laskar Pelangi', 'Andrea Hirata', 'Bentang Pustaka', '2005', 'A1-03', '10', '10'],
+
+            // Contoh buku 2
+            ['2', '9786230001112', 'Belajar Laravel Dasar', 'Developer', 'Informatika', '2024', 'T2-01', '5', '5'],
         ];
     }
 }
 ```
 
-### Add Route untuk Export Semua Buku
+**Penjelasan Singkat**:
+
+-   `headings()` → Memberikan nama kolom (header)
+-   `array()` → Memberikan sample data (2 baris contoh)
+-   Saat user download, file akan berisi header + sample data ini
+
+---
+
+# 2. FILE: BooksTemplateReadImport.php
+
+**Lokasi**: `app/Imports/BooksTemplateReadImport.php`
+
+**Tujuan**: Membaca file Excel yang di-upload oleh user
 
 ```php
-// routes/web.php
-Route::get('books/export/excel', [BookController::class, 'exportBooks'])
-    ->name('books.export');
+<?php
 
-// BookController.php
-public function exportBooks()
+namespace App\Imports;
+
+use Illuminate\Support\Collection;
+use Maatwebsite\Excel\Concerns\ToCollection;
+use Maatwebsite\Excel\Concerns\WithHeadingRow;
+
+class BooksTemplateReadImport implements ToCollection, WithHeadingRow
 {
-    return Excel::download(new BooksExport(), 'books_' . now()->format('Y-m-d_His') . '.xlsx');
+    // Cara paxa:
+    // 1. File Excel dibaca jadi Collection
+    // 2. Row pertama otomatis jadi header/key
+    // 3. Data disimpan di property $rows untuk diproses di controller
+
+    /**
+     * Property untuk simpan semua data dari Excel
+     * Nanti diakses di controller: $import->rows
+     */
+    public Collection $rows;
+
+    public function __construct()
+    {
+        $this->rows = collect();
+    }
+
+    /**
+     * Method dipanggil otomatis saat file dibaca
+     * $collection = semua baris data dari Excel (tanpa header)
+     */
+    public function collection(Collection $collection): void
+    {
+        // Simpan data ke property $rows
+        // Setiap row jadi Collection dengan header sebagai key
+        $this->rows = $collection;
+
+        // Contoh:
+        // $this->rows[0]['title'] → 'Laskar Pelangi'
+        // $this->rows[0]['author'] → 'Andrea Hirata'
+        // $this->rows[0]['category_id'] → '1'
+    }
 }
+```
+
+**Penjelasan Singkat**:
+
+-   Membaca file Excel
+-   `WithHeadingRow` → Row pertama dianggap sebagai header/key
+-   Data disimpan di `$rows` (Collection)
+-   Nanti di-loop di controller untuk cek validasi
+
+---
+
+# 3. CONTROLLER: BookController.php - 2 Method
+
+**Lokasi**: `app/Http/Controllers/BookController.php`
+
+## 3.1 Method: downloadImportTemplate()
+
+**Tujuan**: User download file template kosong
+
+```php
+/**
+ * USER DOWNLOAD TEMPLATE
+ * Endpoint: GET /books/import/template
+ * Response: File Excel (.xlsx)
+ */
+public function downloadImportTemplate()
+{
+    // Pakai Excel facade untuk download
+    // Parameter:
+    // 1. BooksImportTemplateExport() = instance class export
+    // 2. 'template_import_buku.xlsx' = nama file saat didownload
+
+    return Excel::download(
+        new BooksImportTemplateExport(),
+        'template_import_buku.xlsx'
+    );
+
+    // Hasil: File akan di-download otomatis ke komputer user
+}
+```
+
+**Yang Terjadi**:
+
+1. User klik tombol "Download Template"
+2. Sistem generate file dari `BooksImportTemplateExport`
+3. File `template_import_buku.xlsx` di-download
+4. User buka di Excel dan isi data
+
+---
+
+## 3.2 Method: import(Request $request)
+
+**Tujuan**: User upload file Excel yang sudah diisi, simpan ke database
+
+```php
+/**
+ * USER UPLOAD FILE EXCEL
+ * Endpoint: POST /books/import
+ * Body: form-data dengan key "import_file" (file Excel)
+ * Response: Redirect ke /books dengan message success/error
+ */
+public function import(Request $request): RedirectResponse
+{
+    // ========== STEP 1: VALIDASI FILE ==========
+    $request->validate([
+        'import_file' => 'required|file|mimes:xlsx,xls|max:5120',
+    ]);
+    // Cek: File harus ada, format xlsx/xls, max 5MB
+
+    $file = $request->file('import_file');
+
+    // ========== STEP 2: VALIDASI HEADER ==========
+    // Header HARUS cocok dengan template, jika tidak akan error
+    $expectedHeaders = [
+        'category_id',
+        'isbn',
+        'title',
+        'author',
+        'publisher',
+        'year',
+        'rack_location',
+        'quantity_total',
+        'quantity_available',
+    ];
+
+    // Baca header dari file Excel (baris 1 saja)
+    $headerRows = (new HeadingRowImport())->toArray($file);
+    $normalizedHeader = $headerRows[0][0] ?? [];
+
+    // Cek apakah header cocok
+    if ($normalizedHeader !== $expectedHeaders) {
+        return redirect()->route('books.index')
+            ->with('error', 'Format header file Excel tidak sesuai template default.');
+    }
+
+    // ========== STEP 3: BACA FILE EXCEL ==========
+    // Import file ke dalam object, nanti ambil data dari $rows
+    $import = new BooksTemplateReadImport();
+    Excel::import($import, $file);
+    $rows = $import->rows; // Collection berisi semua data buku
+
+    // ========== STEP 4: PROSES SETIAP BARIS ==========
+    $rowErrors = [];  // Tempat simpan error per baris
+    $payloads = [];   // Tempat simpan data yang valid
+
+    foreach ($rows as $index => $row) {
+        $rowNumber = $index + 2; // Baris di Excel (header = baris 1)
+
+        // Skip baris kosong
+        if (count(array_filter($row->toArray(), fn ($value) => trim((string) $value) !== '')) === 0) {
+            continue;
+        }
+
+        // Extract data dari setiap kolom, buang spasi
+        $rowData = [
+            'category_id' => trim((string) $row->get('category_id', '')),
+            'isbn' => trim((string) $row->get('isbn', '')),
+            'title' => trim((string) $row->get('title', '')),
+            'author' => trim((string) $row->get('author', '')),
+            'publisher' => trim((string) $row->get('publisher', '')),
+            'year' => trim((string) $row->get('year', '')),
+            'rack_location' => trim((string) $row->get('rack_location', '')),
+            'quantity_total' => trim((string) $row->get('quantity_total', '')),
+            'quantity_available' => trim((string) $row->get('quantity_available', '')),
+        ];
+
+        // ========== VALIDASI FIELD ==========
+        $validator = Validator::make($rowData, [
+            'category_id' => 'required|integer|exists:categories,id',
+            // Wajib diisi, harus angka, harus ada di tabel categories
+
+            'isbn' => 'nullable|string|max:50',
+            // Opsional, boleh kosong
+
+            'title' => 'required|string|max:255',
+            // Wajib diisi
+
+            'author' => 'required|string|max:255',
+            // Wajib diisi
+
+            'publisher' => 'nullable|string|max:255',
+            // Opsional
+
+            'year' => 'nullable|integer|digits:4',
+            // Opsional, format 4 digit (YYYY)
+
+            'rack_location' => 'nullable|string|max:100',
+            // Opsional
+
+            'quantity_total' => 'required|integer|min:0',
+            // Wajib diisi, harus angka
+
+            'quantity_available' => 'required|integer|min:0',
+            // Wajib diisi, harus angka
+        ]);
+
+        // ========== VALIDASI CUSTOM ==========
+        // quantity_available tidak boleh lebih besar dari quantity_total
+        $validator->after(function ($validator) use ($rowData) {
+            if (
+                isset($rowData['quantity_total'], $rowData['quantity_available']) &&
+                is_numeric($rowData['quantity_total']) &&
+                is_numeric($rowData['quantity_available']) &&
+                (int) $rowData['quantity_available'] > (int) $rowData['quantity_total']
+            ) {
+                $validator->errors()->add(
+                    'quantity_available',
+                    'Quantity available tidak boleh lebih besar dari quantity total.'
+                );
+            }
+        });
+
+        // Jika ada error, catat tapi lanjut ke baris berikutnya
+        if ($validator->fails()) {
+            $rowErrors[] = 'Baris ' . $rowNumber . ': ' . implode(' | ', $validator->errors()->all());
+            continue;
+        }
+
+        // Data valid, simpan untuk nanti di-insert ke DB
+        $payloads[] = [
+            'category_id' => (int) $rowData['category_id'],
+            'isbn' => $rowData['isbn'] ?: null,
+            'title' => $rowData['title'],
+            'author' => $rowData['author'],
+            'publisher' => $rowData['publisher'] ?: null,
+            'year' => $rowData['year'] !== '' && $rowData['year'] !== null ? (int) $rowData['year'] : null,
+            'rack_location' => $rowData['rack_location'] ?: null,
+            'quantity_total' => (int) $rowData['quantity_total'],
+            'quantity_available' => (int) $rowData['quantity_available'],
+        ];
+    }
+
+    // ========== STEP 5: CEK HASIL VALIDASI ==========
+
+    // Jika tidak ada data valid sama sekali
+    if (empty($payloads)) {
+        if (!empty($rowErrors)) {
+            return redirect()->route('books.index')
+                ->with('error', 'Import gagal. Periksa detail error per baris.')
+                ->with('import_errors', $rowErrors);
+        }
+        return redirect()->route('books.index')
+            ->with('error', 'Tidak ada data yang bisa diimport.');
+    }
+
+    // Jika ada data valid tapi juga ada error di baris lain, reject semua
+    if (!empty($rowErrors)) {
+        return redirect()->route('books.index')
+            ->with('error', 'Import dibatalkan karena ada data tidak valid. Perbaiki lalu upload ulang.')
+            ->with('import_errors', $rowErrors);
+    }
+
+    // ========== STEP 6: SIMPAN KE DATABASE ==========
+    // Gunakan transaction: jika ada error, rollback semua
+    DB::transaction(function () use ($payloads) {
+        foreach ($payloads as $payload) {
+            Book::create($payload);
+        }
+    });
+
+    // ========== STEP 7: RETURN RESPONSE ==========
+    return redirect()->route('books.index')
+        ->with('success', count($payloads) . ' buku berhasil diimport.');
+}
+```
+
+**Alur Kerja Simplified**:
+
+```
+1. User upload file Excel
+   ↓
+2. Cek: File valid? (format, size)
+   ↓
+3. Cek: Header cocok dengan template?
+   ↓
+4. Baca semua baris dari Excel
+   ↓
+5. Loop setiap baris:
+   - Extract data
+   - Validasi field
+   - Jika valid → simpan ke payloads
+   - Jika error → catat di rowErrors
+   ↓
+6. Cek hasil:
+   - Ada error? → Reject semua, tampilkan error detail
+   - Semua valid? → Insert ke database
+   ↓
+7. Return: Success atau error message
+```
+
+---
+
+# 4. ROUTE CONFIGURATION
+
+**Lokasi**: `routes/web.php`
+
+```php
+<?php
+
+Route::middleware(['auth'])->group(function () {
+
+    // ===== ROUTE 1: DOWNLOAD TEMPLATE =====
+    // Method: GET
+    // URL: /books/import/template
+    // Controller Method: downloadImportTemplate()
+    Route::get(
+        'books/import/template',
+        [App\Http\Controllers\BookController::class, 'downloadImportTemplate']
+    )->name('books.import.template');
+
+    // ===== ROUTE 2: UPLOAD FILE =====
+    // Method: POST
+    // URL: /books/import
+    // Body: form-data dengan "import_file"
+    // Controller Method: import()
+    Route::post(
+        'books/import',
+        [App\Http\Controllers\BookController::class, 'import']
+    )->name('books.import');
+
+    // ===== ROUTE 3: CRUD BOOKS (Standard Resource) =====
+    Route::resource('books', App\Http\Controllers\BookController::class);
+});
+```
+
+**Penjelasan**:
+
+-   Route 1: User klik "Download Template" → file di-download
+-   Route 2: User upload file via form → proses import
+-   Route 3: Standar CRUD routes untuk list/create/edit/delete buku
+
+---
+
+# 5. MODAL VIEW (FORM UPLOAD)
+
+**Lokasi**: `resources/views/books/modals/import.blade.php`
+
+```blade
+<!-- Modal Upload Import -->
+<div class="modal fade" id="modalImportBook" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <!-- Modal Header -->
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">
+                    📥 Import Buku (Excel)
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+
+            <!-- Modal Body -->
+            <form method="POST" action="{{ route('books.import') }}" enctype="multipart/form-data">
+                @csrf
+
+                <div class="modal-body">
+                    <!-- Info -->
+                    <div class="alert alert-light border mb-3 small">
+                        <strong>Catatan:</strong><br>
+                        1. Download template terlebih dahulu<br>
+                        2. Isi data buku di file Excel<br>
+                        3. Upload kembali file tersebut
+                    </div>
+
+                    <!-- File Input -->
+                    <div class="form-group mb-2">
+                        <label class="font-weight-bold mb-1">Pilih File Excel</label>
+                        <input
+                            type="file"
+                            name="import_file"
+                            class="form-control-file"
+                            accept=".xlsx,.xls"
+                            required
+                        >
+                        <small class="text-muted">
+                            Format: .xlsx atau .xls | Max: 5MB
+                        </small>
+                    </div>
+                </div>
+
+                <!-- Modal Footer -->
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                        Batal
+                    </button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fa fa-check"></i> Upload & Import
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+```
+
+**Penjelasan Modal**:
+
+-   Form submit ke route: `books.import` (POST)
+-   Input name: `import_file` (harus sama dengan di controller)
+-   Accept: `.xlsx` atau `.xls` files saja
+-   Max size: 5MB
+
+---
+
+# 6. MAIN VIEW - TOMBOL
+
+**Lokasi**: `resources/views/books/index.blade.php` (bagian button)
+
+```blade
+<div class="d-flex flex-wrap justify-content-end" style="gap:.4rem;">
+
+    <!-- Tombol 1: Download Template -->
+    <a href="{{ route('books.import.template') }}" class="btn btn-success btn-sm">
+        <i class="fas fa-file-download mr-1"></i> Download Template Import
+    </a>
+
+    <!-- Tombol 2: Upload Import (buka modal) -->
+    <button type="button" class="btn btn-outline-success btn-sm" data-toggle="modal" data-target="#modalImportBook">
+        <i class="fas fa-file-upload mr-1"></i> Upload Import
+    </button>
+
+    <!-- Tombol 3: Create New Book -->
+    <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#modalCreateBook">
+        Create New Book
+    </button>
+
+</div>
+
+<!-- Include Modal Import -->
+@include('books.modals.import')
 ```
