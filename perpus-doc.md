@@ -548,12 +548,6 @@ Default akun admin:
 -   MySQL/MariaDB
 
 
-# 📚 TUTORIAL SEDERHANA EXPORT & IMPORT BUKU
-
-**Versi Simpel** | Fokus pada kode yang dipakai | Tanpa teori berlebihan
-
----
-
 ## 📌 QUICK START - 3 File Utama
 
 Ada 3 file utama yang perlu dimengerti:
