@@ -547,8 +547,559 @@ Default akun admin:
 -   Node.js 18+
 -   MySQL/MariaDB
 
-## 12. Catatan Implementasi Penting
 
--   Stok buku tidak langsung berkurang saat user membuat transaksi, melainkan saat admin approve.
--   Semua operasi kritikal (register + pembuatan member, import buku, approve pinjaman) menggunakan validasi dan/atau transaksi database.
--   Nilai denda per hari dan default durasi perpanjangan bersumber dari tabel `setting_apps`.
+# API Documentation - Import/Export Books
+
+## 📚 Complete Reference Guide
+
+---
+
+## Endpoint 1: Download Import Template
+
+### Request
+
+```
+GET /books/import/template
+```
+
+### cURL Example
+
+```bash
+curl -X GET "http://localhost:8000/books/import/template" \
+  --output "template_import_buku.xlsx"
+```
+
+### PowerShell Example
+
+```powershell
+$url = "http://localhost:8000/books/import/template"
+$outputFile = "C:\Downloads\template_import_buku.xlsx"
+Invoke-WebRequest -Uri $url -OutFile $outputFile
+```
+
+### JavaScript/Fetch Example
+
+```javascript
+fetch("http://localhost:8000/books/import/template")
+    .then((response) => response.blob())
+    .then((blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "template_import_buku.xlsx";
+        a.click();
+    });
+```
+
+### Response
+
+-   **Content-Type**: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+-   **Status Code**: 200 OK
+-   **Body**: Binary Excel file (.xlsx)
+
+### Sample Output (Baris 1-3):
+
+```
+category_id | isbn         | title           | author        | publisher     | year | rack_location | quantity_total | quantity_available
+1           | 9786020324781| Laskar Pelangi  | Andrea Hirata | Bentang Pustaka| 2005 | A1-03         | 10             | 10
+2           | 9786230001112| Belajar Laravel | John Developer| Informatika   | 2024 | T2-01         | 5              | 5
+```
+
+---
+
+## Endpoint 2: Import Data Books
+
+### Request
+
+```
+POST /books/import
+Content-Type: multipart/form-data
+```
+
+### Form Data
+
+| Field       | Type | Required | Notes                    |
+| ----------- | ---- | -------- | ------------------------ |
+| import_file | File | Yes      | .xlsx atau .xls, max 5MB |
+
+### cURL Example
+
+```bash
+curl -X POST "http://localhost:8000/books/import" \
+  -F "import_file=@/path/to/template_import_buku.xlsx" \
+  -H "X-CSRF-TOKEN: your_csrf_token"
+```
+
+### JavaScript Fetch Example
+
+```javascript
+const formData = new FormData();
+formData.append("import_file", fileInput.files[0]);
+
+fetch("/books/import", {
+    method: "POST",
+    body: formData,
+    headers: {
+        "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]')
+            .content,
+    },
+})
+    .then((response) => response.json())
+    .then((data) => console.log(data));
+```
+
+### jQuery AJAX Example
+
+```javascript
+$("#importForm").on("submit", function (e) {
+    e.preventDefault();
+
+    const formData = new FormData(this);
+
+    $.ajax({
+        url: "/books/import",
+        type: "POST",
+        data: formData,
+        processData: false,
+        contentType: false,
+        success: function (response) {
+            console.log("Success:", response);
+            // Reload halaman atau tampilkan success message
+        },
+        error: function (response) {
+            console.log("Error:", response);
+            // Tampilkan error message
+        },
+    });
+});
+```
+
+### Response Success (302 Redirect)
+
+```
+Location: /books
+Set-Cookie: laravel_session=...
+Message: 5 buku berhasil diimport.
+```
+
+### Response Error Examples
+
+**Error 1: Invalid File Format**
+
+```
+HTTP 422 Unprocessable Entity
+
+Error: "The import file must be a file of type: xlsx, xls"
+```
+
+**Error 2: Invalid Headers**
+
+```
+HTTP 302 Redirect
+Location: /books
+Message: "Format header file Excel tidak sesuai template default."
+```
+
+**Error 3: Validation Error on Rows**
+
+```
+HTTP 302 Redirect
+Location: /books
+Message: "Import dibatalkan karena ada data tidak valid. Perbaiki lalu upload ulang."
+
+Details:
+- Baris 3: category_id field is required
+- Baris 5: quantity_available tidak boleh lebih besar dari quantity total
+- Baris 7: isbn field must be a string
+```
+
+**Error 4: No Valid Data**
+
+```
+HTTP 302 Redirect
+Location: /books
+Message: "Tidak ada data yang bisa diimport."
+```
+
+---
+
+## Data Validation Rules per Field
+
+### category_id
+
+```
+Rules: required|integer|exists:categories,id
+
+Error Messages:
+- "The category_id field is required"
+- "The category_id field must be an integer"
+- "The selected category_id is invalid"
+
+Valid Values: ID dari kategori yang ada di tabel categories
+Invalid Values: 999 (jika tidak ada), "ABC" (bukan integer)
+```
+
+### isbn
+
+```
+Rules: nullable|string|max:50
+
+Error Messages:
+- "The isbn field must be a string"
+- "The isbn field may not be greater than 50 characters"
+
+Valid Values: "9786020324781", "" (kosong), null
+Invalid Values: 9786020324781123456 (>50 char)
+```
+
+### title
+
+```
+Rules: required|string|max:255
+
+Error Messages:
+- "The title field is required"
+- "The title field must be a string"
+- "The title field may not be greater than 255 characters"
+
+Valid Values: "Laskar Pelangi", "Buku dengan Judul Panjang"
+Invalid Values: "" (kosong), 123 (bukan string)
+```
+
+### author
+
+```
+Rules: required|string|max:255
+
+Error Messages:
+- "The author field is required"
+- "The author field must be a string"
+- "The author field may not be greater than 255 characters"
+
+Valid Values: "Andrea Hirata", "John Developer"
+Invalid Values: "" (kosong)
+```
+
+### publisher
+
+```
+Rules: nullable|string|max:255
+
+Error Messages:
+- "The publisher field must be a string"
+- "The publisher field may not be greater than 255 characters"
+
+Valid Values: "Bentang Pustaka", "" (kosong), null
+```
+
+### year
+
+```
+Rules: nullable|integer|digits:4
+
+Error Messages:
+- "The year field must be an integer"
+- "The year field must be exactly 4 characters"
+
+Valid Values: 2005, 2024, 2025, "" (kosong), null
+Invalid Values: "2024" (string), 24 (2 digit), 202 (3 digit)
+```
+
+### rack_location
+
+```
+Rules: nullable|string|max:100
+
+Error Messages:
+- "The rack_location field must be a string"
+- "The rack_location field may not be greater than 100 characters"
+
+Valid Values: "A1-03", "T2-01", "Rak A Baris 1", "" (kosong)
+```
+
+### quantity_total
+
+```
+Rules: required|integer|min:0
+
+Error Messages:
+- "The quantity_total field is required"
+- "The quantity_total field must be an integer"
+- "The quantity_total field must be at least 0"
+
+Valid Values: 0, 1, 10, 100
+Invalid Values: "" (kosong), -5 (negatif), "10" (string)
+```
+
+### quantity_available
+
+```
+Rules: required|integer|min:0|<=quantity_total
+
+Error Messages:
+- "The quantity_available field is required"
+- "The quantity_available field must be an integer"
+- "The quantity_available field must be at least 0"
+- "quantity_available tidak boleh lebih besar dari quantity total"
+
+Valid Values: 0, 5, 10 (jika total >= 10)
+Invalid Values: -1 (negatif), 15 (jika total = 10)
+```
+
+---
+
+## Example Import Data
+
+### Valid Data
+
+**Example 1 - Complete Data**
+
+```
+category_id: 1
+isbn: 9786020324781
+title: Laskar Pelangi
+author: Andrea Hirata
+publisher: Bentang Pustaka
+year: 2005
+rack_location: A1-03
+quantity_total: 10
+quantity_available: 8
+```
+
+**Example 2 - Minimal (Required Only)**
+
+```
+category_id: 1
+isbn: (kosong)
+title: Novel Indonesia
+author: Nama Penulis
+publisher: (kosong)
+year: (kosong)
+rack_location: (kosong)
+quantity_total: 5
+quantity_available: 3
+```
+
+**Example 3 - Multiple Books**
+
+```
+[
+  {
+    "category_id": 1,
+    "isbn": "9786020324781",
+    "title": "Laskar Pelangi",
+    "author": "Andrea Hirata",
+    "publisher": "Bentang",
+    "year": 2005,
+    "rack_location": "A1-03",
+    "quantity_total": 10,
+    "quantity_available": 8
+  },
+  {
+    "category_id": 2,
+    "isbn": "9786230001112",
+    "title": "Laravel Programming",
+    "author": "John Developer",
+    "publisher": "Tech Publisher",
+    "year": 2024,
+    "rack_location": "T2-01",
+    "quantity_total": 5,
+    "quantity_available": 4
+  }
+]
+```
+
+---
+
+## Excel Template Format
+
+### Column Order (PENTING - JANGAN UBAH)
+
+1. category_id
+2. isbn
+3. title
+4. author
+5. publisher
+6. year
+7. rack_location
+8. quantity_total
+9. quantity_available
+
+### Excel Sample
+
+```
+Row 1 (Header):
+category_id | isbn | title | author | publisher | year | rack_location | quantity_total | quantity_available
+
+Row 2 (Data):
+1 | 9786020324781 | Laskar Pelangi | Andrea Hirata | Bentang | 2005 | A1-03 | 10 | 8
+
+Row 3 (Data):
+2 | 9786230001112 | Laravel 11 | John Developer | Tech | 2024 | T2-01 | 5 | 4
+```
+
+---
+
+## Success Response Flow
+
+```
+User Upload File
+       ↓
+[Validate file format]
+  ├─ Valid → Continue
+  └─ Invalid → Error: File must be .xlsx or .xls
+       ↓
+[Check header structure]
+  ├─ Valid → Continue
+  └─ Invalid → Error: Header format not matceed
+       ↓
+[Read Excel data]
+       ↓
+[Validate each row]
+  ├─ Row valid → Add to payloads
+  └─ Row invalid → Add to errors
+       ↓
+[Check payloads]
+  ├─ Has valid data → Continue to step below
+  ├─ No valid data → Error: No data to import
+  └─ Has errors → Error: Invalid data in some rows
+       ↓
+[Database Transaction]
+  ├─ Success → Commit
+  └─ Failed → Rollback all
+       ↓
+[Redirect to /books]
+  └─ Success: X buku berhasil diimport
+```
+
+---
+
+## Error Flow
+
+```
+User Upload File
+       ↓
+File Format Error?
+  ├─ YES → Redirect with error message
+  └─ NO → Continue
+       ↓
+Header Mismatch?
+  ├─ YES → Redirect with error message
+  └─ NO → Continue
+       ↓
+Process All Rows
+  ├─ All valid → Process insert
+  ├─ All invalid → Redirect with error list
+  └─ Mix valid/invalid → Reject all, redirect with error list
+       ↓
+Database Error?
+  ├─ YES → Rollback transaction, error message
+  └─ NO → Success message
+```
+
+---
+
+## Performance Metrics
+
+| File Size | Rows      | Estimated Time | Status         |
+| --------- | --------- | -------------- | -------------- |
+| < 1MB     | < 500     | < 1s           | ✅ Optimal     |
+| 1-3MB     | 500-2000  | 1-3s           | ✅ Good        |
+| 3-5MB     | 2000-5000 | 3-5s           | ⚠️ Acceptable  |
+| > 5MB     | > 5000    | N/A            | ❌ Not Allowed |
+
+---
+
+## Database Transaction Details
+
+```php
+// Semua data diinsert dalam satu transaction
+DB::transaction(function () use ($payloads) {
+    foreach ($payloads as $payload) {
+        Book::create($payload);
+    }
+});
+
+// Jika ADA ERROR di tengah proses:
+// - Semua data yang sudah diinsert akan di-ROLLBACK
+// - Database state kembali seperti sebelum import
+// - User mendapat error message
+
+// Jika SEMUA BERHASIL:
+// - Semua data di-COMMIT ke database
+// - User mendapat success message
+```
+
+---
+
+## Custom Implementation
+
+### Extend BooksImportTemplateExport untuk Export Semua Buku
+
+```php
+<?php
+
+namespace App\Exports;
+
+use App\Models\Book;
+use Maatwebsite\Excel\Concerns\FromCollection;
+use Maatwebsite\Excel\Concerns\WithHeadings;
+use Maatwebsite\Excel\Concerns\WithMapping;
+
+class BooksExport implements FromCollection, WithHeadings, WithMapping
+{
+    public function collection()
+    {
+        // Ambil semua buku dari database
+        return Book::with('category')->get();
+    }
+
+    public function headings(): array
+    {
+        return [
+            'ID',
+            'Category',
+            'ISBN',
+            'Title',
+            'Author',
+            'Publisher',
+            'Year',
+            'Rack Location',
+            'Total Quantity',
+            'Available Quantity',
+            'Created At',
+        ];
+    }
+
+    public function map($book): array
+    {
+        return [
+            $book->id,
+            $book->category->name,
+            $book->isbn,
+            $book->title,
+            $book->author,
+            $book->publisher,
+            $book->year,
+            $book->rack_location,
+            $book->quantity_total,
+            $book->quantity_available,
+            $book->created_at->format('Y-m-d H:i:s'),
+        ];
+    }
+}
+```
+
+### Add Route untuk Export Semua Buku
+
+```php
+// routes/web.php
+Route::get('books/export/excel', [BookController::class, 'exportBooks'])
+    ->name('books.export');
+
+// BookController.php
+public function exportBooks()
+{
+    return Excel::download(new BooksExport(), 'books_' . now()->format('Y-m-d_His') . '.xlsx');
+}
+```
