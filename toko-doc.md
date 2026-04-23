@@ -8,13 +8,13 @@ Dokumentasi ini menjelaskan **alur sistem**, **desain database**, **model**, **c
 
 Aplikasi Smart Toko adalah sistem **Point of Sale (POS)** berbasis Laravel yang dirancang untuk mengelola:
 
--   **Manajemen Produk**: CRUD produk dengan kategori, harga, dan stok
--   **Manajemen Pembelian**: Transaksi pembelian dari supplier dengan tracking stok
--   **Kasir (POS)**: Interface kasir yang user-friendly dengan keranjang belanja real-time
--   **Manajemen Pembayaran**: Dukungan metode pembayaran (Tunai & Transfer Bank)
--   **Laporan Penjualan**: Dashboard laporan dengan chart dan export PDF
--   **Manajemen User & Role**: RBAC (Role-Based Access Control) berbasis Spatie Permission
--   **Pengaturan Aplikasi**: Konfigurasi global seperti nama toko, logo, dll
+- **Manajemen Produk**: CRUD produk dengan kategori, harga, dan stok
+- **Manajemen Pembelian**: Transaksi pembelian dari supplier dengan tracking stok
+- **Kasir (POS)**: Interface kasir yang user-friendly dengan keranjang belanja real-time
+- **Manajemen Pembayaran**: Dukungan metode pembayaran (Tunai & Transfer Bank)
+- **Laporan Penjualan**: Dashboard laporan dengan chart dan export PDF
+- **Manajemen User & Role**: RBAC (Role-Based Access Control) berbasis Spatie Permission
+- **Pengaturan Aplikasi**: Konfigurasi global seperti nama toko, logo, dll
 
 ### Konsep Utama Sistem
 
@@ -30,45 +30,45 @@ Produk → Pembelian → Kasir → Keranjang Belanja → Checkout → Pembayaran
 
 ### Backend
 
--   **Laravel Framework 11**
--   **PHP 8+**
--   **MySQL/MariaDB**
+- **Laravel Framework 11**
+- **PHP 8+**
+- **MySQL/MariaDB**
 
 ### Library Composer (Utama)
 
 #### `spatie/laravel-permission`
 
--   Manajemen Role & Permission (RBAC).
--   Tabel: `permissions`, `roles`, `model_has_permissions`, `model_has_roles`, `role_has_permissions`.
--   Digunakan pada middleware seperti `permission:products.index`, `permission:orders.create`, dll.
--   Default roles: `admin`, `user`.
+- Manajemen Role & Permission (RBAC).
+- Tabel: `permissions`, `roles`, `model_has_permissions`, `model_has_roles`, `role_has_permissions`.
+- Digunakan pada middleware seperti `permission:products.index`, `permission:orders.create`, dll.
+- Default roles: `admin`, `user`.
 
 #### `yajra/laravel-datatables-oracle`
 
--   Server-side DataTables untuk tabel interaktif dengan JSON response.
--   Dipakai pada: Users, Roles, Permissions, Categories, Products, Suppliers, Purchases, Orders.
--   Fitur: Search, Sort, Pagination, Custom Columns.
+- Server-side DataTables untuk tabel interaktif dengan JSON response.
+- Dipakai pada: Users, Roles, Permissions, Categories, Products, Suppliers, Purchases, Orders.
+- Fitur: Search, Sort, Pagination, Custom Columns.
 
 #### `barryvdh/laravel-dompdf`
 
--   Export laporan transaksi penjualan ke PDF.
--   Digunakan untuk: Daily Report, Hourly Report, Sales Report.
+- Export laporan transaksi penjualan ke PDF.
+- Digunakan untuk: Daily Report, Hourly Report, Sales Report.
 
 ### Frontend Build Tools
 
--   **Vite** + `laravel-vite-plugin`
--   **Bootstrap 4.6** + `@popperjs/core`
--   **jQuery 3.6**
--   **Chart.js 3.9.1** (untuk dashboard reports)
--   **FontAwesome 5**
--   **SweetAlert2** (notifikasi interaktif)
--   **Axios** (AJAX requests)
+- **Vite** + `laravel-vite-plugin`
+- **Bootstrap 4.6** + `@popperjs/core`
+- **jQuery 3.6**
+- **Chart.js 3.9.1** (untuk dashboard reports)
+- **FontAwesome 5**
+- **SweetAlert2** (notifikasi interaktif)
+- **Axios** (AJAX requests)
 
 ### Library Dev
 
--   `phpunit/phpunit` (testing)
--   `laravel/debugbar` (debug lokal)
--   `laravel/pint` (formatter)
+- `phpunit/phpunit` (testing)
+- `laravel/debugbar` (debug lokal)
+- `laravel/pint` (formatter)
 
 ---
 
@@ -78,181 +78,187 @@ Pola yang dipakai mengikuti **MVC (Model-View-Controller)** Laravel:
 
 ### Model (`app/Models`)
 
--   Representasi tabel database
--   Relasi antar model
--   Fillable array & attribute casting
--   Helper methods (e.g., generate invoice number)
+- Representasi tabel database
+- Relasi antar model
+- Fillable array & attribute casting
+- Helper methods (e.g., generate invoice number)
 
 ### Controller (`app/Http/Controllers`)
 
--   Menangani alur request & response
--   Validasi input & authorization
--   Transaksi database & business logic
--   Response view atau JSON (untuk AJAX)
+- Menangani alur request & response
+- Validasi input & authorization
+- Transaksi database & business logic
+- Response view atau JSON (untuk AJAX)
 
 ### Migration (`database/migrations`)
 
--   Mendefinisikan skema tabel
--   Foreign key & constraint
--   Enum status & default values
--   Indexing untuk performa
+- Mendefinisikan skema tabel
+- Foreign key & constraint
+- Enum status & default values
+- Indexing untuk performa
 
 ### Views (`resources/views`)
 
--   Blade template untuk UI
--   Modal bootstrap untuk CRUD
--   Form handling dengan CSRF protection
--   DataTables widget untuk tabel
+### Updated PurchaseController store()
 
-### Routes (`routes/web.php`)
+```php
+try {
+    $totalAmount = 0;
+    foreach ($validated['items'] as $item) {
+        $totalAmount += $item['quantity'] * $item['price'];
+    }
 
--   Resource controllers untuk CRUD
--   Custom routes untuk aksi khusus (e.g., `/orders/{order}/confirm-payment`)
--   Grouping dengan middleware auth & permission
+    $purchase = Purchase::create([
+        'supplier_id' => $validated['supplier_id'],
+        'purchase_date' => $validated['purchase_date'],
+        'purchase_number' => trim($validated['purchase_number']),
+        'total_amount' => $totalAmount,
+        'notes' => $validated['notes'] ?? null,
+        'status' => $validated['status'] ?? 'pending',
+    ]);
+
+    DB::transaction(function () use ($purchase, $validated) {
+        $purchaseItems = [];
+        foreach ($validated['items'] as $item) {
+            $subtotal = $item['quantity'] * $item['price'];
+            $purchaseItems[] = [
+                'product_id' => $item['product_id'],
+                'quantity' => $item['quantity'],
+                'price' => (float) $item['price'],
+                'subtotal' => $subtotal,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+
+            PurchaseItem::create([
+                'purchase_id' => $purchase->id,
+                'product_id' => $item['product_id'],
+                'quantity' => $item['quantity'],
+                'price' => (float) $item['price'],
+                'subtotal' => $subtotal,
+            ]);
+        }
+    });
+
+    return redirect()->route('admin.purchases.index')->with('success', 'Pembelian berhasil ditambahkan.');
+} catch (\Exception $e) {
+    return back()->withInput()->with('error', 'Terjadi kesalahan saat menyimpan pembelian.');
+}
+```
 
 ---
 
-## 4. Desain Database (Tabel & Relasi)
+### Dynamic Form (Blade)
 
-### 4.1 Tabel Inti Sistem
+```blade
+<div class="mb-2">
+    <label for="component_allowance_id" class="mb-2">Component Allowance</label>
+    <select name="component_allowance_id[]" id="component_allowance_id" class="form-select select2" required>
+        <option value="" disabled selected>Select an Component Allowance</option>
+        @foreach ($fixedComponent as $item)
+            <option value="{{ $item->id }}">{{ $item->title }}</option>
+        @endforeach
+    </select>
+</div>
 
-#### `users` (Pengguna Sistem)
+<div class="mb-2">
+    <label class="mb-2">Amount</label>
+    <input
+        type="text"
+        class="form-control @error('amount') is-invalid @enderror unit-price-input"
+        name="amount[]"
+        value="{{ old('amount') }}"
+        required
+        placeholder="Enter"
+    />
+</div>
 
-```
-- id (Primary Key)
-- name (string)
-- email (string, unique)
-- email_verified_at (timestamp, nullable)
-- password (string)
-- remember_token (string, nullable)
-- created_at, updated_at (timestamps)
-```
-
-**Relasi**: HasMany `orders` (sebagai creator), HasMany `payments` (sebagai approvedBy).
-
-#### `categories` (Kategori Produk)
-
-```
-- id (Primary Key)
-- name (string)
-- slug (string, unique)
-- description (text, nullable)
-- status (enum: active, inactive)
-- created_at, updated_at (timestamps)
-```
-
-**Relasi**: HasMany `products`.
-
-#### `products` (Produk Toko)
-
-```
-- id (Primary Key)
-- category_id (Foreign Key → categories.id)
-- name (string, unique)
-- price (decimal: 10,2)
-- stock (integer, default: 0)
-- image (string, nullable)
-- status (enum: active, inactive)
-- created_at, updated_at (timestamps)
+<div id="newEntriesContainer"></div>
 ```
 
-**Relasi**: BelongsTo `category`, HasMany `order_items`, HasMany `purchase_items`.
+### Format Rupiah + Submit Loading (JavaScript)
 
-#### `suppliers` (Supplier Pembelian)
+```javascript
+document
+  .getElementById("permissionsForm")
+  .addEventListener("submit", function () {
+    document.querySelector(".btn-submit").classList.add("d-none");
+    document.querySelector(".btn-reset").classList.add("d-none");
+    document.querySelector(".btn-loading").classList.remove("d-none");
+  });
 
-```
-- id (Primary Key)
-- name (string)
-- phone (string, nullable)
-- email (string, nullable)
-- address (text, nullable)
-- city (string, nullable)
-- status (enum: active, inactive)
-- created_at, updated_at (timestamps)
-```
+$(document).on("keyup", ".unit-price-input", function () {
+  this.value = formatRupiah(this.value);
+});
 
-**Relasi**: HasMany `purchases`.
+function formatRupiah(angka, prefix) {
+  var number_string = angka.replace(/[^,\d]/g, "").toString(),
+    split = number_string.split(","),
+    sisa = split[0].length % 3,
+    rupiah = split[0].substr(0, sisa),
+    ribuan = split[0].substr(sisa).match(/\d{3}/gi);
 
-#### `purchases` (Transaksi Pembelian)
+  if (ribuan) {
+    var separator = sisa ? "." : "";
+    rupiah += separator + ribuan.join(".");
+  }
 
-```
-- id (Primary Key)
-- supplier_id (Foreign Key → suppliers.id)
-- purchase_date (date)
-- purchase_number (string, unique)
-- total_amount (decimal: 12,2)
-- notes (text, nullable)
-- status (enum: pending, received)
-- created_at, updated_at (timestamps)
-```
-
-**Relasi**: BelongsTo `supplier`, HasMany `purchase_items`.
-
-#### `purchase_items` (Detail Item Pembelian)
-
-```
-- id (Primary Key)
-- purchase_id (Foreign Key → purchases.id)
-- product_id (Foreign Key → products.id)
-- quantity (integer)
-- price (decimal: 10,2)
-- subtotal (decimal: 12,2)
-- created_at, updated_at (timestamps)
+  rupiah = split[1] != undefined ? rupiah + "," + split[1] : rupiah;
+  return prefix == undefined ? rupiah : rupiah ? "Rp. " + rupiah : "";
+}
 ```
 
-**Relasi**: BelongsTo `purchase`, BelongsTo `product`.
+### Add/Remove Dynamic Entries (JavaScript)
 
-#### `orders` (Transaksi Penjualan)
+```javascript
+$(document).ready(function () {
+  $(".select2").select2();
 
+  $("#addButton").on("click", function () {
+    var newEntry = `
+<div class="entry mb-3">
+    <hr>
+    <div class="mb-2">
+        <label for="component_allowance_id" class="mb-2">Component Allowance</label>
+        <select name="component_allowance_id[]" id="component_allowance_id" class="form-select select2" required>
+            <option value="" disabled selected>Select an Component Allowance</option>
+            @foreach ($fixedComponent as $item)
+                <option value="{{ $item->id }}">{{ $item->title }}</option>
+            @endforeach
+        </select>
+    </div>
+
+    <div class="mb-2">
+        <label class="mb-2">Amount</label>
+        <input
+            type="text"
+            class="form-control @error('amount') is-invalid @enderror unit-price-input"
+            name="amount[]"
+            value="{{ old('amount') }}"
+            required
+            placeholder="Enter"
+        />
+    </div>
+
+    <button type="button" class="btn btn-danger btn-sm deleteEntry">Delete</button>
+</div>`;
+
+    $("#newEntriesContainer").append(newEntry);
+    $("#newEntriesContainer .select2").select2();
+  });
+
+  $(document).on("click", ".deleteEntry", function () {
+    $(this).closest(".entry").remove();
+  });
+});
 ```
-- id (Primary Key)
-- user_id (Foreign Key → users.id, creator)
-- invoice_number (string, unique)
-- total_amount (decimal: 12,2)
-- status (enum: pending, completed, cancelled)
-- notes (text, nullable)
-- created_at, updated_at (timestamps)
-```
 
-**Relasi**: BelongsTo `user`, HasMany `order_items`, HasOne `payment`.
+---
 
-#### `order_items` (Detail Item Penjualan)
-
-```
-- id (Primary Key)
-- order_id (Foreign Key → orders.id)
-- product_id (Foreign Key → products.id)
-- quantity (integer)
-- price (decimal: 10,2)
-- subtotal (decimal: 12,2)
-- created_at, updated_at (timestamps)
-```
-
-**Relasi**: BelongsTo `order`, BelongsTo `product`.
-
-#### `payments` (Info Pembayaran Penjualan)
-
-```
-- id (Primary Key)
-- order_id (Foreign Key → orders.id, unique)
-- payment_method (enum: cash, transfer)
-- payment_status (enum: pending, paid)
-- paid_amount (decimal: 12,2, nullable)
-- change_amount (decimal: 12,2, nullable)
-- approved_by (integer, Foreign Key → users.id, nullable)
-- approved_at (timestamp, nullable)
-- created_at, updated_at (timestamps)
-```
-
-**Relasi**: BelongsTo `order`, BelongsTo `user` (approvedBy).
-
-#### `setting_apps` (Pengaturan Aplikasi Global)
-
-```
-- id (Primary Key)
 - setting_key (string, unique)
 - setting_value (text, nullable)
 - created_at, updated_at (timestamps)
+
 ```
 
 **Contoh data**: `app_name`, `app_logo`, `cashier_name`, dll.
@@ -288,44 +294,46 @@ Library `spatie/laravel-permission` otomatis membuat:
 ### 4.3 Ringkasan Relasi
 
 ```
+
 User
-  ├─ HasMany orders (creator)
-  ├─ HasMany payments (approvedBy)
-  ├─ ManyToMany roles
-  └─ ManyToMany permissions
+├─ HasMany orders (creator)
+├─ HasMany payments (approvedBy)
+├─ ManyToMany roles
+└─ ManyToMany permissions
 
 Category
-  └─ HasMany products
+└─ HasMany products
 
 Product
-  ├─ BelongsTo category
-  ├─ HasMany order_items
-  └─ HasMany purchase_items
+├─ BelongsTo category
+├─ HasMany order_items
+└─ HasMany purchase_items
 
 Supplier
-  └─ HasMany purchases
+└─ HasMany purchases
 
 Purchase
-  ├─ BelongsTo supplier
-  └─ HasMany purchase_items
+├─ BelongsTo supplier
+└─ HasMany purchase_items
 
 PurchaseItem
-  ├─ BelongsTo purchase
-  └─ BelongsTo product
+├─ BelongsTo purchase
+└─ BelongsTo product
 
 Order
-  ├─ BelongsTo user (creator)
-  ├─ HasMany order_items
-  └─ HasOne payment
+├─ BelongsTo user (creator)
+├─ HasMany order_items
+└─ HasOne payment
 
 OrderItem
-  ├─ BelongsTo order
-  └─ BelongsTo product
+├─ BelongsTo order
+└─ BelongsTo product
 
 Payment
-  ├─ BelongsTo order
-  └─ BelongsTo user (approvedBy)
-```
+├─ BelongsTo order
+└─ BelongsTo user (approvedBy)
+
+````
 
 ### 4.4 Diagram ERD (Mermaid)
 
@@ -354,7 +362,7 @@ erDiagram
         string setting_key
         text setting_value
     }
-```
+````
 
 ---
 
@@ -506,12 +514,12 @@ protected $fillable = ['setting_key', 'setting_value'];
 
 **Validasi**:
 
--   `category_id`: required, exists in categories
--   `name`: required, unique on products
--   `price`: required, numeric, min 0
--   `stock`: required, integer, min 0
--   `image`: nullable, image mimes, max 2MB
--   `status`: required, in (active/inactive)
+- `category_id`: required, exists in categories
+- `name`: required, unique on products
+- `price`: required, numeric, min 0
+- `stock`: required, integer, min 0
+- `image`: nullable, image mimes, max 2MB
+- `status`: required, in (active/inactive)
 
 **Image Storage**: Produk image disimpan di `public/storage/uploads/products/` dengan naming `{timestamp}-{original_filename}`.
 
@@ -571,8 +579,8 @@ session('cart') = [
 
 **Payment Methods**:
 
--   `cash` → Pembayaran langsung, `payment_status` = `paid`
--   `transfer` → Pembayaran pending, `payment_status` = `pending`, butuh approval admin
+- `cash` → Pembayaran langsung, `payment_status` = `paid`
+- `transfer` → Pembayaran pending, `payment_status` = `pending`, butuh approval admin
 
 ---
 
@@ -588,9 +596,9 @@ session('cart') = [
 
 **Fitur Report**:
 
--   Filter by date range
--   Chart.js 3.9.1 untuk visualisasi
--   Export PDF via DomPDF
+- Filter by date range
+- Chart.js 3.9.1 untuk visualisasi
+- Export PDF via DomPDF
 
 ---
 
@@ -763,33 +771,33 @@ Download file PDF
 
 ## 8. Fitur Aplikasi (Checklist)
 
--   [x] **Autentikasi**: Login, Register, Logout, Password Reset
--   [x] **Role & Permission**: Berbasis Spatie (RBAC)
--   [x] **Dashboard**: Overview revenue, top products, recent orders
--   [x] **Manajemen User**: CRUD user dengan assign role & permission
--   [x] **Manajemen Role**: CRUD role dengan assign permission
--   [x] **Manajemen Kategori**: CRUD kategori produk
--   [x] **Manajemen Produk**: CRUD produk dengan image upload & stok tracking
--   [x] **Manajemen Supplier**: CRUD supplier
--   [x] **Manajemen Pembelian**: Create purchase order, auto-update stok
--   [x] **Interface Kasir (POS)**:
-    -   Grid produk dengan search filter
-    -   Real-time cart (AJAX-based)
-    -   Keranjang dengan qty adjustment via modal
-    -   Payment method selection (Cash/Transfer)
-    -   Auto-format Rupiah currency
-    -   Smart UI: Hide certain fields based on payment method
--   [x] **Checkout & Order**: Create order + order items + payment atomically
--   [x] **Payment Confirmation**: Admin approval untuk transfer payment
--   [x] **Receipt**: Tampil receipt dengan print-friendly design
--   [x] **Laporan Penjualan**:
-    -   Daily Report
-    -   Hourly Breakdown
-    -   Monthly Sales Chart
-    -   PDF Export
--   [x] **Pengaturan Aplikasi**: Logo, nama toko, configurasi global
--   [x] **DataTables**: Semua list view dengan server-side processing
--   [x] **Modal Bootstrap**: Consistent modal UI untuk CRUD
+- [x] **Autentikasi**: Login, Register, Logout, Password Reset
+- [x] **Role & Permission**: Berbasis Spatie (RBAC)
+- [x] **Dashboard**: Overview revenue, top products, recent orders
+- [x] **Manajemen User**: CRUD user dengan assign role & permission
+- [x] **Manajemen Role**: CRUD role dengan assign permission
+- [x] **Manajemen Kategori**: CRUD kategori produk
+- [x] **Manajemen Produk**: CRUD produk dengan image upload & stok tracking
+- [x] **Manajemen Supplier**: CRUD supplier
+- [x] **Manajemen Pembelian**: Create purchase order, auto-update stok
+- [x] **Interface Kasir (POS)**:
+  - Grid produk dengan search filter
+  - Real-time cart (AJAX-based)
+  - Keranjang dengan qty adjustment via modal
+  - Payment method selection (Cash/Transfer)
+  - Auto-format Rupiah currency
+  - Smart UI: Hide certain fields based on payment method
+- [x] **Checkout & Order**: Create order + order items + payment atomically
+- [x] **Payment Confirmation**: Admin approval untuk transfer payment
+- [x] **Receipt**: Tampil receipt dengan print-friendly design
+- [x] **Laporan Penjualan**:
+  - Daily Report
+  - Hourly Breakdown
+  - Monthly Sales Chart
+  - PDF Export
+- [x] **Pengaturan Aplikasi**: Logo, nama toko, configurasi global
+- [x] **DataTables**: Semua list view dengan server-side processing
+- [x] **Modal Bootstrap**: Consistent modal UI untuk CRUD
 
 ---
 
@@ -867,28 +875,28 @@ Membuat permission untuk setiap module: `users.*`, `roles.*`, `categories.*`, `p
 
 Membuat role: `admin`, `user`.
 
--   `admin` → assign semua permission
--   `user` → assign permission terbatas
+- `admin` → assign semua permission
+- `user` → assign permission terbatas
 
 ### `UserTableSeeder`
 
 Membuat default user:
 
--   **Admin Account**
-    -   Name: `Admin`
-    -   Email: `admin@gmail.com`
-    -   Password: `123456`
-    -   Role: `admin`
+- **Admin Account**
+  - Name: `Admin`
+  - Email: `admin@gmail.com`
+  - Password: `123456`
+  - Role: `admin`
 
 ### `CategorySeeder`
 
 Membuat kategori default:
 
--   Makanan & Minuman
--   Elektronik
--   Fashion
--   Kecantikan
--   Rumah Tangga
+- Makanan & Minuman
+- Elektronik
+- Fashion
+- Kecantikan
+- Rumah Tangga
 
 ### `SupplierSeeder`
 
@@ -904,10 +912,10 @@ Membuat 15 produk sample (tanpa barcode) di berbagai kategori dengan stok & harg
 
 ### 11.1 Prasyarat
 
--   PHP 8.0+
--   Composer 2+
--   Node.js 18+
--   MySQL 5.7+ atau MariaDB
+- PHP 8.0+
+- Composer 2+
+- Node.js 18+
+- MySQL 5.7+ atau MariaDB
 
 ### 11.2 Langkah Instalasi
 
@@ -1065,45 +1073,45 @@ smart-toko/
 
 ### 13.1 Manajemen Stok
 
--   **Pembelian**: Stok produk **berkurang** saat item di-`add-to-cart`, **bertambah** saat pembelian tersimpan di database.
--   **Penjualan**: Stok produk **berkurang** saat order di-checkout (tidak saat add-to-cart, hanya session).
+- **Pembelian**: Stok produk **berkurang** saat item di-`add-to-cart`, **bertambah** saat pembelian tersimpan di database.
+- **Penjualan**: Stok produk **berkurang** saat order di-checkout (tidak saat add-to-cart, hanya session).
 
 ### 13.2 Session Cart
 
--   Cart disimpan dalam **Laravel session** (dalam-memory, bukan database).
--   Structure: Array of items dengan `product_id`, `name`, `price`, `quantity`, `subtotal`.
--   Diperbarui via AJAX POST endpoints: `/orders/add-to-cart`, `/orders/remove-from-cart`.
--   Dihapus otomatis setelah checkout berhasil.
+- Cart disimpan dalam **Laravel session** (dalam-memory, bukan database).
+- Structure: Array of items dengan `product_id`, `name`, `price`, `quantity`, `subtotal`.
+- Diperbarui via AJAX POST endpoints: `/orders/add-to-cart`, `/orders/remove-from-cart`.
+- Dihapus otomatis setelah checkout berhasil.
 
 ### 13.3 Validasi & Authorization
 
--   Semua action check permission via middleware: `permission:resource.action`.
--   Validasi input dilakukan di controller dengan `validate()` atau Form Request.
--   Authorization check via Gate::check() atau `$user->can()`.
+- Semua action check permission via middleware: `permission:resource.action`.
+- Validasi input dilakukan di controller dengan `validate()` atau Form Request.
+- Authorization check via Gate::check() atau `$user->can()`.
 
 ### 13.4 Transaksi Database
 
--   **Checkout** menggunakan DB transaction untuk atomicity:
-    ```php
-    DB::transaction(function () {
-        // Create Order
-        // Create OrderItems
-        // Create Payment
-        // Decrease stock
-    });
-    ```
+- **Checkout** menggunakan DB transaction untuk atomicity:
+  ```php
+  DB::transaction(function () {
+      // Create Order
+      // Create OrderItems
+      // Create Payment
+      // Decrease stock
+  });
+  ```
 
 ### 13.5 Image Upload
 
--   Produk image disimpan di `public/storage/uploads/products/`.
--   Naming: `{timestamp}-{original_filename}` (e.g., `1711234567-product.jpg`).
--   Validasi: max 2MB, mimes: jpeg, png, jpg, gif.
--   Hapus file lama saat update.
+- Produk image disimpan di `public/storage/uploads/products/`.
+- Naming: `{timestamp}-{original_filename}` (e.g., `1711234567-product.jpg`).
+- Validasi: max 2MB, mimes: jpeg, png, jpg, gif.
+- Hapus file lama saat update.
 
 ### 13.6 Payment Methods
 
--   **Cash**: Pembayaran langsung, `payment_status = 'paid'` immediately.
--   **Transfer**: Pembayaran pending, `payment_status = 'pending'`, admin harus approve.
+- **Cash**: Pembayaran langsung, `payment_status = 'paid'` immediately.
+- **Transfer**: Pembayaran pending, `payment_status = 'pending'`, admin harus approve.
 
 ### 13.7 Invoice Number Generation
 
@@ -1120,36 +1128,36 @@ File: `resources/views/orders/pos.blade.php`
 
 ### Section 1: State & Data
 
--   `cart` object: Array items dengan product_id, name, price, quantity, subtotal
--   `totalPrice`: Calculated from cart items
+- `cart` object: Array items dengan product_id, name, price, quantity, subtotal
+- `totalPrice`: Calculated from cart items
 
 ### Section 2: Helper Functions
 
--   `formatRupiah(number)`: Ubah 5000 → "Rp 5.000"
--   `extractNumber(string)`: Ubah "Rp 5.000" → 5000
+- `formatRupiah(number)`: Ubah 5000 → "Rp 5.000"
+- `extractNumber(string)`: Ubah "Rp 5.000" → 5000
 
 ### Section 3: Server Communication (AJAX)
 
--   `addToCart(productId, qty)`: POST to `/orders/add-to-cart`
--   `removeFromCart(productId)`: POST to `/orders/remove-from-cart`
+- `addToCart(productId, qty)`: POST to `/orders/add-to-cart`
+- `removeFromCart(productId)`: POST to `/orders/remove-from-cart`
 
 ### Section 4: UI Updates
 
--   `updateCartSidebar()`: Refresh sidebar cart display
--   `updateCartModal()`: Refresh modal cart items
--   `updateCartDisplay()`: General cart visual update
+- `updateCartSidebar()`: Refresh sidebar cart display
+- `updateCartModal()`: Refresh modal cart items
+- `updateCartDisplay()`: General cart visual update
 
 ### Section 5: Event Handlers
 
--   Click add product → Open modal qty
--   Submit modal qty → Call addToCart via AJAX
--   Remove button → Call removeFromCart via AJAX
--   Payment method change → Hide/show fields
+- Click add product → Open modal qty
+- Submit modal qty → Call addToCart via AJAX
+- Remove button → Call removeFromCart via AJAX
+- Payment method change → Hide/show fields
 
 ### Section 6: Payment Logic
 
--   `handlePaymentMethodChange()`: Toggle UI based on cash/transfer
--   `handleCheckoutSubmit()`: Validate & POST checkout
+- `handlePaymentMethodChange()`: Toggle UI based on cash/transfer
+- `handleCheckoutSubmit()`: Validate & POST checkout
 
 ---
 
@@ -1157,12 +1165,12 @@ File: `resources/views/orders/pos.blade.php`
 
 Key styles:
 
--   `.pos-container`: Bootstrap grid layout kasir
--   `.products-grid`: Auto-fill product cards
--   `.product-card`: Individual product styling
--   `.cart-sidebar`: Right sidebar cart area
--   `.payment-section`: Payment method & amount inputs
--   `.modal-body`: Scrollable modal dengan max-height
+- `.pos-container`: Bootstrap grid layout kasir
+- `.products-grid`: Auto-fill product cards
+- `.product-card`: Individual product styling
+- `.cart-sidebar`: Right sidebar cart area
+- `.payment-section`: Payment method & amount inputs
+- `.modal-body`: Scrollable modal dengan max-height
 
 ---
 
@@ -1188,9 +1196,6 @@ Key styles:
 
 **A**: Admin buka `/orders` → lihat "Konfirmasi Pembayaran" button → klik approve.
 
-
-
-
 # Tutorial Transaksi POS - Smart Toko
 
 ## 📋 Table of Contents
@@ -1215,47 +1220,47 @@ Sistem transaksi POS di Smart Toko menggunakan alur berikut:
 
 1. **Loading Halaman POS**
 
-    - User (Kasir) mengakses `/orders/pos`
-    - Controller menampilkan daftar produk yang aktif
-    - Cart disimpan di JavaScript object (bukan session)
+   - User (Kasir) mengakses `/orders/pos`
+   - Controller menampilkan daftar produk yang aktif
+   - Cart disimpan di JavaScript object (bukan session)
 
 2. **Menambahkan Produk ke Keranjang**
 
-    - Kasir klik produk
-    - AJAX request ke `/orders/add-to-cart`
-    - Backend validasi: cek stock produk
-    - Response: return data produk
-    - Frontend update JS object `cart`
+   - Kasir klik produk
+   - AJAX request ke `/orders/add-to-cart`
+   - Backend validasi: cek stock produk
+   - Response: return data produk
+   - Frontend update JS object `cart`
 
 3. **Manajemen Keranjang**
 
-    - Ubah quantity dari tiap item
-    - Hapus item dari keranjang
-    - Lihat detail keranjang di modal
-    - Real-time calculation total
+   - Ubah quantity dari tiap item
+   - Hapus item dari keranjang
+   - Lihat detail keranjang di modal
+   - Real-time calculation total
 
 4. **Proses Checkout**
 
-    - Pilih metode pembayaran (Tunai/Transfer)
-    - Input jumlah bayar (untuk tunai)
-    - Cart items di-serialize menjadi JSON
-    - Submit form ke `/orders/checkout`
+   - Pilih metode pembayaran (Tunai/Transfer)
+   - Input jumlah bayar (untuk tunai)
+   - Cart items di-serialize menjadi JSON
+   - Submit form ke `/orders/checkout`
 
 5. **Backend Processing**
 
-    - Parse JSON cart items
-    - Validasi pembayaran
-    - Database transaction:
-        - Create Order
-        - Create OrderItems
-        - Update Product Stock
-        - Create Payment Record
-    - Jika sukses: redirect ke receipt
-    - Jika error: rollback & show error message
+   - Parse JSON cart items
+   - Validasi pembayaran
+   - Database transaction:
+     - Create Order
+     - Create OrderItems
+     - Update Product Stock
+     - Create Payment Record
+   - Jika sukses: redirect ke receipt
+   - Jika error: rollback & show error message
 
 6. **Receipt**
-    - Tampilkan invoice & detail transaksi
-    - Opsi print receipt
+   - Tampilkan invoice & detail transaksi
+   - Opsi print receipt
 
 ### 💾 Data Flow
 
@@ -2151,8 +2156,8 @@ class OrderController extends Controller
 
 ```json
 {
-    "product_id": 1,
-    "qty": 2
+  "product_id": 1,
+  "qty": 2
 }
 ```
 
@@ -2160,16 +2165,16 @@ class OrderController extends Controller
 
 ```json
 {
-    "success": true,
-    "message": "Produk ditambahkan ke keranjang",
-    "product": {
-        "product_id": 1,
-        "name": "Produk A",
-        "price": 50000,
-        "image": "product.jpg",
-        "qty": 2,
-        "subtotal": 100000
-    }
+  "success": true,
+  "message": "Produk ditambahkan ke keranjang",
+  "product": {
+    "product_id": 1,
+    "name": "Produk A",
+    "price": 50000,
+    "image": "product.jpg",
+    "qty": 2,
+    "subtotal": 100000
+  }
 }
 ```
 
@@ -2177,8 +2182,8 @@ class OrderController extends Controller
 
 ```json
 {
-    "success": false,
-    "message": "Stok tidak cukup"
+  "success": false,
+  "message": "Stok tidak cukup"
 }
 ```
 
@@ -2190,7 +2195,7 @@ class OrderController extends Controller
 
 ```json
 {
-    "product_id": 1
+  "product_id": 1
 }
 ```
 
@@ -2198,8 +2203,8 @@ class OrderController extends Controller
 
 ```json
 {
-    "success": true,
-    "message": "Produk dihapus dari keranjang"
+  "success": true,
+  "message": "Produk dihapus dari keranjang"
 }
 ```
 
@@ -2211,20 +2216,20 @@ class OrderController extends Controller
 
 ```json
 {
-    "payment_method": "cash",
-    "paid_amount": 150000,
-    "cart_items": "[{\"product_id\":1,\"name\":\"Produk A\",\"price\":50000,\"qty\":2,\"subtotal\":100000}]"
+  "payment_method": "cash",
+  "paid_amount": 150000,
+  "cart_items": "[{\"product_id\":1,\"name\":\"Produk A\",\"price\":50000,\"qty\":2,\"subtotal\":100000}]"
 }
 ```
 
 **Success Response (Redirect):**
 
--   Redirect to `/orders/{order_id}/receipt`
--   Flash message: "Transaksi berhasil! Invoice: INV-20260327-0001"
+- Redirect to `/orders/{order_id}/receipt`
+- Flash message: "Transaksi berhasil! Invoice: INV-20260327-0001"
 
 **Error Response (Redirect back):**
 
--   Flash message: "Transaksi gagal: [error message]"
+- Flash message: "Transaksi gagal: [error message]"
 
 ---
 
@@ -2350,13 +2355,13 @@ Copy code dari section [Controller](#controller) ke `app/Http/Controllers/OrderC
 
 Buat/update `public/asset/css/pos.css` dengan styling untuk:
 
--   `.pos-container`
--   `.products-grid`
--   `.product-card`
--   `.cart-sidebar`
--   `.cart-items`
--   `.cart-summary`
--   `.payment-section`
+- `.pos-container`
+- `.products-grid`
+- `.product-card`
+- `.cart-sidebar`
+- `.cart-items`
+- `.cart-summary`
+- `.payment-section`
 
 ### Step 6: Testing
 
@@ -2371,21 +2376,21 @@ Buat/update `public/asset/css/pos.css` dengan styling untuk:
 
 ### Step 7: Verification Checklist
 
--   [ ] Products displayed correctly
--   [ ] Add to cart works (AJAX)
--   [ ] Remove from cart works
--   [ ] Cart total calculated correctly
--   [ ] Payment method selection works
--   [ ] Paid amount input validated (cash)
--   [ ] Change calculated correctly
--   [ ] Checkout button enabled/disabled properly
--   [ ] Checkout process succeeds
--   [ ] Invoice number generated correctly
--   [ ] Stock updated in database
--   [ ] Order/OrderItems/Payment created
--   [ ] Receipt displays invoice
--   [ ] Print receipt works
--   [ ] Error handling works
+- [ ] Products displayed correctly
+- [ ] Add to cart works (AJAX)
+- [ ] Remove from cart works
+- [ ] Cart total calculated correctly
+- [ ] Payment method selection works
+- [ ] Paid amount input validated (cash)
+- [ ] Change calculated correctly
+- [ ] Checkout button enabled/disabled properly
+- [ ] Checkout process succeeds
+- [ ] Invoice number generated correctly
+- [ ] Stock updated in database
+- [ ] Order/OrderItems/Payment created
+- [ ] Receipt displays invoice
+- [ ] Print receipt works
+- [ ] Error handling works
 
 ---
 
@@ -2417,7 +2422,6 @@ Buat/update `public/asset/css/pos.css` dengan styling untuk:
 4. **Data Validation** - Validate all request inputs
 5. **Database Transaction** - Use transactions to prevent inconsistent data
 6. **CSRF Protection** - Include CSRF token in all POST requests
-
 
 # File-File untuk Implementasi Transaksi POS
 
@@ -2493,13 +2497,13 @@ Lihat di TUTORIAL_TRANSAKSI_POS.md untuk full controller code.
 
 Highlights:
 
--   **pos()** - Return POS view dengan products
--   **addToCart()** - AJAX endpoint validate stock & return product data
--   **removeFromCart()** - AJAX endpoint confirm deletion
--   **checkout()** - Main transaction processing dengan DB transaction
--   **receipt()** - Display invoice
--   **printReceipt()** - Print invoice
--   **generateInvoiceNumber()** - Generate unique invoice per day
+- **pos()** - Return POS view dengan products
+- **addToCart()** - AJAX endpoint validate stock & return product data
+- **removeFromCart()** - AJAX endpoint confirm deletion
+- **checkout()** - Main transaction processing dengan DB transaction
+- **receipt()** - Display invoice
+- **printReceipt()** - Print invoice
+- **generateInvoiceNumber()** - Generate unique invoice per day
 
 ---
 
@@ -2692,210 +2696,210 @@ Highlights:
 ```css
 /* ==================== POS LAYOUT ==================== */
 .pos-container {
-    min-height: calc(100vh - 180px);
+  min-height: calc(100vh - 180px);
 }
 
 /* ==================== PRODUCTS GRID ==================== */
 .products-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 15px;
-    overflow-y: auto;
-    padding: 15px;
-    background: #f5f5f5;
-    border-radius: 8px;
-    max-height: calc(100vh - 280px);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 15px;
+  overflow-y: auto;
+  padding: 15px;
+  background: #f5f5f5;
+  border-radius: 8px;
+  max-height: calc(100vh - 280px);
 }
 
 /* Product Card */
 .product-card {
-    background: white;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    padding: 10px;
-    cursor: pointer;
-    transition: all 0.3s;
-    text-align: center;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 10px;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-align: center;
 }
 
 .product-card:hover {
-    border-color: #007bff;
-    box-shadow: 0 0 10px rgba(0, 123, 255, 0.2);
-    transform: translateY(-2px);
+  border-color: #007bff;
+  box-shadow: 0 0 10px rgba(0, 123, 255, 0.2);
+  transform: translateY(-2px);
 }
 
 .product-image {
-    width: 100%;
-    height: 110px;
-    object-fit: cover;
-    border-radius: 5px;
-    margin-bottom: 8px;
+  width: 100%;
+  height: 110px;
+  object-fit: cover;
+  border-radius: 5px;
+  margin-bottom: 8px;
 }
 
 .product-name {
-    font-size: 13px;
-    font-weight: 600;
-    margin-bottom: 4px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .product-price {
-    color: #28a745;
-    font-weight: bold;
-    font-size: 14px;
+  color: #28a745;
+  font-weight: bold;
+  font-size: 14px;
 }
 
 /* ==================== CART SIDEBAR ==================== */
 .cart-sidebar {
-    background: white;
-    border-radius: 8px;
-    padding: 15px;
-    display: flex;
-    flex-direction: column;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    height: fit-content;
-    position: sticky;
-    top: 15px;
+  background: white;
+  border-radius: 8px;
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  height: fit-content;
+  position: sticky;
+  top: 15px;
 }
 
 /* Cart Items */
 .cart-items {
-    flex: 1;
-    overflow-y: auto;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    padding: 10px;
-    margin-bottom: 15px;
-    background: #f9f9f9;
-    max-height: 300px;
+  flex: 1;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 15px;
+  background: #f9f9f9;
+  max-height: 300px;
 }
 
 .cart-item {
-    background: white;
-    padding: 10px;
-    margin-bottom: 8px;
-    border-radius: 5px;
-    border-left: 3px solid #007bff;
+  background: white;
+  padding: 10px;
+  margin-bottom: 8px;
+  border-radius: 5px;
+  border-left: 3px solid #007bff;
 }
 
 .cart-item-name {
-    font-size: 12px;
-    font-weight: bold;
-    margin-bottom: 3px;
+  font-size: 12px;
+  font-weight: bold;
+  margin-bottom: 3px;
 }
 
 .cart-item-qty {
-    font-size: 11px;
-    color: #666;
-    margin-bottom: 3px;
+  font-size: 11px;
+  color: #666;
+  margin-bottom: 3px;
 }
 
 .cart-item-subtotal {
-    font-size: 12px;
-    color: #28a745;
-    font-weight: bold;
-    margin-bottom: 5px;
+  font-size: 12px;
+  color: #28a745;
+  font-weight: bold;
+  margin-bottom: 5px;
 }
 
 .cart-item-remove {
-    font-size: 11px;
-    color: #dc3545;
-    cursor: pointer;
+  font-size: 11px;
+  color: #dc3545;
+  cursor: pointer;
 }
 
 .cart-item-remove:hover {
-    text-decoration: underline;
+  text-decoration: underline;
 }
 
 /* ==================== CART SUMMARY ==================== */
 .cart-summary {
-    background: #f0f0f0;
-    padding: 12px;
-    border-radius: 5px;
-    margin-bottom: 15px;
+  background: #f0f0f0;
+  padding: 12px;
+  border-radius: 5px;
+  margin-bottom: 15px;
 }
 
 .summary-row {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 6px;
-    font-size: 12px;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  font-size: 12px;
 }
 
 .summary-row.total {
-    font-weight: bold;
-    font-size: 16px;
-    border-top: 1px solid #ddd;
-    padding-top: 6px;
-    color: #28a745;
+  font-weight: bold;
+  font-size: 16px;
+  border-top: 1px solid #ddd;
+  padding-top: 6px;
+  color: #28a745;
 }
 
 /* ==================== PAYMENT SECTION ==================== */
 .payment-section {
-    border-top: 1px solid #ddd;
-    padding-top: 12px;
+  border-top: 1px solid #ddd;
+  padding-top: 12px;
 }
 
 .form-group {
-    margin-bottom: 10px;
+  margin-bottom: 10px;
 }
 
 .form-group label {
-    font-weight: 600;
-    font-size: 12px;
-    margin-bottom: 4px;
-    display: block;
+  font-weight: 600;
+  font-size: 12px;
+  margin-bottom: 4px;
+  display: block;
 }
 
 .form-group input,
 .form-group select {
-    font-size: 13px !important;
+  font-size: 13px !important;
 }
 
 .btn-checkout {
-    width: 100%;
-    margin-top: 5px;
-    font-size: 13px;
-    font-weight: bold;
+  width: 100%;
+  margin-top: 5px;
+  font-size: 13px;
+  font-weight: bold;
 }
 
 .btn-checkout:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 /* ==================== RESPONSIVE ==================== */
 @media (max-width: 768px) {
-    .pos-container {
-        min-height: auto;
-    }
+  .pos-container {
+    min-height: auto;
+  }
 
-    .cart-sidebar {
-        position: static;
-        margin-top: 20px;
-    }
+  .cart-sidebar {
+    position: static;
+    margin-top: 20px;
+  }
 
-    .products-grid {
-        grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-        max-height: none;
-    }
+  .products-grid {
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    max-height: none;
+  }
 }
 
 @media (max-width: 480px) {
-    .products-grid {
-        grid-template-columns: repeat(3, 1fr);
-        gap: 10px;
-    }
+  .products-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
 
-    .product-image {
-        height: 80px;
-    }
+  .product-image {
+    height: 80px;
+  }
 
-    .product-name {
-        font-size: 11px;
-    }
+  .product-name {
+    font-size: 11px;
+  }
 }
 ```
 
@@ -2969,20 +2973,20 @@ class Payment extends Model {
 
 ## ✅ Implementation Checklist
 
--   [ ] Routes ditambahkan ke `routes/web.php`
--   [ ] OrderController dibuat dengan semua methods
--   [ ] Models dibuat (Order, OrderItem, Payment)
--   [ ] Migrations dibuat dan di-run
--   [ ] `pos.blade.php` dibuat dengan form & layout
--   [ ] JavaScript code ditambahkan ke view
--   [ ] CSS file dibuat dengan styling
--   [ ] Test add to cart
--   [ ] Test remove from cart
--   [ ] Test checkout dengan cash
--   [ ] Test checkout dengan transfer
--   [ ] Test receipt display
--   [ ] Verify database records created
--   [ ] Test error handling
+- [ ] Routes ditambahkan ke `routes/web.php`
+- [ ] OrderController dibuat dengan semua methods
+- [ ] Models dibuat (Order, OrderItem, Payment)
+- [ ] Migrations dibuat dan di-run
+- [ ] `pos.blade.php` dibuat dengan form & layout
+- [ ] JavaScript code ditambahkan ke view
+- [ ] CSS file dibuat dengan styling
+- [ ] Test add to cart
+- [ ] Test remove from cart
+- [ ] Test checkout dengan cash
+- [ ] Test checkout dengan transfer
+- [ ] Test receipt display
+- [ ] Verify database records created
+- [ ] Test error handling
 
 ---
 
@@ -3004,154 +3008,158 @@ class Payment extends Model {
 
 **Solution:** Check database transaction logs dan validation errors
 
+### Updated PurchaseController store()
 
-### Updated PurchaseController  store()
-
----
-    try {
-        $totalAmount = 0;
-        foreach ($validated['items'] as $item) {
-            $totalAmount += $item['quantity'] * $item['price'];
-        }
-
-        $purchase = Purchase::create([
-            'supplier_id' => $validated['supplier_id'],
-            'purchase_date' => $validated['purchase_date'],
-            'purchase_number' => trim($validated['purchase_number']),
-            'total_amount' => $totalAmount,
-            'notes' => $validated['notes'] ?? null,
-            'status' => $validated['status'] ?? 'pending',
-        ]);
-
-        DB::transaction(function () use ($purchase, $validated) {
-            $purchaseItems = [];
-            foreach ($validated['items'] as $item) {
-                $subtotal = $item['quantity'] * $item['price'];
-                $purchaseItems[] = [
-                    'product_id' => $item['product_id'],
-                    'quantity' => $item['quantity'],
-                    'price' => (float) $item['price'],
-                    'subtotal' => $subtotal,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ];
-
-                PurchaseItem::create([
-                    'purchase_id' => $purchase->id,
-                    'product_id' => $item['product_id'],
-                    'quantity' => $item['quantity'],
-                    'price' => (float) $item['price'],
-                    'subtotal' => $subtotal,
-                ]);
-            }
-        });
-
-        return redirect()->route('admin.purchases.index')->with('success', 'Pembelian berhasil ditambahkan.');
-    } catch (\Exception $e) {
-        return back()->withInput()->with('error', 'Terjadi kesalahan saat menyimpan pembelian.');
+```php
+try {
+    $totalAmount = 0;
+    foreach ($validated['items'] as $item) {
+        $totalAmount += $item['quantity'] * $item['price'];
     }
+
+    $purchase = Purchase::create([
+        'supplier_id' => $validated['supplier_id'],
+        'purchase_date' => $validated['purchase_date'],
+        'purchase_number' => trim($validated['purchase_number']),
+        'total_amount' => $totalAmount,
+        'notes' => $validated['notes'] ?? null,
+        'status' => $validated['status'] ?? 'pending',
+    ]);
+
+    DB::transaction(function () use ($purchase, $validated) {
+        $purchaseItems = [];
+        foreach ($validated['items'] as $item) {
+            $subtotal = $item['quantity'] * $item['price'];
+            $purchaseItems[] = [
+                'product_id' => $item['product_id'],
+                'quantity' => $item['quantity'],
+                'price' => (float) $item['price'],
+                'subtotal' => $subtotal,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+
+            PurchaseItem::create([
+                'purchase_id' => $purchase->id,
+                'product_id' => $item['product_id'],
+                'quantity' => $item['quantity'],
+                'price' => (float) $item['price'],
+                'subtotal' => $subtotal,
+            ]);
+        }
+    });
+
+    return redirect()->route('admin.purchases.index')->with('success', 'Pembelian berhasil ditambahkan.');
+} catch (\Exception $e) {
+    return back()->withInput()->with('error', 'Terjadi kesalahan saat menyimpan pembelian.');
+}
 ```
 
 ---
 
+### Dynamic Form (Blade)
+
+```blade
+<div class="mb-2">
+    <label for="component_allowance_id" class="mb-2">Component Allowance</label>
+    <select name="component_allowance_id[]" id="component_allowance_id" class="form-select select2" required>
+        <option value="" disabled selected>Select an Component Allowance</option>
+        @foreach ($fixedComponent as $item)
+            <option value="{{ $item->id }}">{{ $item->title }}</option>
+        @endforeach
+    </select>
+</div>
+
+<div class="mb-2">
+    <label class="mb-2">Amount</label>
+    <input
+        type="text"
+        class="form-control @error('amount') is-invalid @enderror unit-price-input"
+        name="amount[]"
+        value="{{ old('amount') }}"
+        required
+        placeholder="Enter"
+    />
+</div>
+
+<div id="newEntriesContainer"></div>
+```
+
+### Format Rupiah + Submit Loading (JavaScript)
+
+```javascript
+document
+  .getElementById("permissionsForm")
+  .addEventListener("submit", function () {
+    document.querySelector(".btn-submit").classList.add("d-none");
+    document.querySelector(".btn-reset").classList.add("d-none");
+    document.querySelector(".btn-loading").classList.remove("d-none");
+  });
+
+$(document).on("keyup", ".unit-price-input", function () {
+  this.value = formatRupiah(this.value);
+});
+
+function formatRupiah(angka, prefix) {
+  var number_string = angka.replace(/[^,\d]/g, "").toString(),
+    split = number_string.split(","),
+    sisa = split[0].length % 3,
+    rupiah = split[0].substr(0, sisa),
+    ribuan = split[0].substr(sisa).match(/\d{3}/gi);
+
+  if (ribuan) {
+    var separator = sisa ? "." : "";
+    rupiah += separator + ribuan.join(".");
+  }
+
+  rupiah = split[1] != undefined ? rupiah + "," + split[1] : rupiah;
+  return prefix == undefined ? rupiah : rupiah ? "Rp. " + rupiah : "";
+}
+```
+
+### Add/Remove Dynamic Entries (JavaScript)
+
+```javascript
+$(document).ready(function () {
+  $(".select2").select2();
+
+  $("#addButton").on("click", function () {
+    var newEntry = `
+<div class="entry mb-3">
+    <hr>
     <div class="mb-2">
         <label for="component_allowance_id" class="mb-2">Component Allowance</label>
         <select name="component_allowance_id[]" id="component_allowance_id" class="form-select select2" required>
             <option value="" disabled selected>Select an Component Allowance</option>
             @foreach ($fixedComponent as $item)
-            <option value="{{ $item->id }}">{{ $item->title }}</option>
+                <option value="{{ $item->id }}">{{ $item->title }}</option>
             @endforeach
         </select>
     </div>
 
     <div class="mb-2">
         <label class="mb-2">Amount</label>
-        <input type="text" class="form-control @error('amount') is-invalid @enderror unit-price-input" name="amount[]"
-            value="{{ old('amount') }}" required placeholder="Enter" />
+        <input
+            type="text"
+            class="form-control @error('amount') is-invalid @enderror unit-price-input"
+            name="amount[]"
+            value="{{ old('amount') }}"
+            required
+            placeholder="Enter"
+        />
     </div>
 
-    
-    <div id="newEntriesContainer"></div>
+    <button type="button" class="btn btn-danger btn-sm deleteEntry">Delete</button>
+</div>`;
 
-	<script>
-    document.getElementById('permissionsForm').addEventListener('submit', function() {
-        document.querySelector('.btn-submit').classList.add('d-none');
-        document.querySelector('.btn-reset').classList.add('d-none');
-        document.querySelector('.btn-loading').classList.remove('d-none');
-    });
+    $("#newEntriesContainer").append(newEntry);
+    $("#newEntriesContainer .select2").select2();
+  });
 
-    // Memanggil fungsi formatRupiah untuk semua input dengan class unit-price-input
-        $(document).on('keyup', '.unit-price-input', function () {
-        this.value = formatRupiah(this.value);
-        });
-
-        // Fungsi formatRupiah
-        function formatRupiah(angka, prefix) {
-        var number_string = angka.replace(/[^,\d]/g, '').toString(),
-        split = number_string.split(','),
-        sisa = split[0].length % 3,
-        rupiah = split[0].substr(0, sisa),
-        ribuan = split[0].substr(sisa).match(/\d{3}/gi);
-
-        if (ribuan) {
-        separator = sisa ? '.' : '';
-        rupiah += separator + ribuan.join('.');
-        }
-
-        rupiah = split[1] != undefined ? rupiah + ',' + split[1] : rupiah;
-        return prefix == undefined ? rupiah : (rupiah ? 'Rp. ' + rupiah : '');
-        }
-</script>
-
----
-
----
-<script>
-    $(document).ready(function () {
-        // Inisialisasi select2 untuk semua elemen select dengan kelas 'select2'
-        $('.select2').select2();
-
-        // Ketika tombol "Add" diklik
-        $('#addButton').on('click', function () {
-            // Buat entri baru
-            var newEntry = `
-
-    <div class="entry mb-3">
-        <hr>
-        <div class="mb-2">
-            <label for="component_allowance_id" class="mb-2">Component Allowance</label>
-            <select name="component_allowance_id[]" id="component_allowance_id" class="form-select select2" required>
-                <option value="" disabled selected>Select an Component Allowance</option>
-                @foreach ($fixedComponent as $item)
-                <option value="{{ $item->id }}">{{ $item->title }}</option>
-                @endforeach
-            </select>
-        </div>
-
-        <div class="mb-2">
-            <label class="mb-2">Amount</label>
-            <input type="text" class="form-control @error('amount') is-invalid @enderror unit-price-input"
-                name="amount[]" value="{{ old('amount') }}" required placeholder="Enter" />
-        </div>
-        <!-- Delete Button -->
-        <button type="button" class="btn btn-danger btn-sm deleteEntry">Delete</button>
-    </div>
-    `;
-
-            // Tambahkan entri baru ke dalam container
-            $('#newEntriesContainer').append(newEntry);
-
-            // Inisialisasi ulang select2 untuk elemen baru yang ditambahkan
-            $('#newEntriesContainer .select2').select2();
-        });
-
-        // Ketika tombol delete diklik
-        $(document).on('click', '.deleteEntry', function () {
-            // Hapus elemen entri yang terkait
-            $(this).closest('.entry').remove();
-        });
-    });
-</script>
-
+  $(document).on("click", ".deleteEntry", function () {
+    $(this).closest(".entry").remove();
+  });
+});
+```
 
 ---
