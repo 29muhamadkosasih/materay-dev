@@ -4,14 +4,14 @@ Sistem Arsip Dokumentasi Dokumen
 
 1. Latar Belakang
 
-Perusahaan membutuhkan sistem untuk mengelola arsip dokumen secara terstruktur agar proses penyimpanan, pencarian, peminjaman, dan pengembalian dokumen dapat dilakukan dengan cepat, akurat, dan terdokumentasi. Saat ini lokasi penyimpanan dokumen masih sulit dilacak sehingga diperlukan sistem yang mampu merekam posisi fisik setiap dokumen.
+Perusahaan membutuhkan sistem untuk mengelola arsip dokumen secara terstruktur agar proses penyimpanan, pencarian, edit, dan penghapusan dokumen dapat dilakukan dengan cepat, akurat, dan terdokumentasi. Saat ini lokasi penyimpanan dokumen masih sulit dilacak sehingga diperlukan sistem yang mampu merekam posisi fisik setiap dokumen.
 
 2. Tujuan
 
 - Mempermudah pencatatan lokasi penyimpanan dokumen.
 - Mempercepat proses pencarian dokumen.
-- Mengurangi risiko kehilangan dokumen.
-- Menyediakan riwayat perpindahan dan peminjaman dokumen.
+- Mengurangi risiko kehilangan arsip.
+- Menyediakan riwayat perubahan dan penghapusan dokumen.
 - Menyediakan laporan arsip secara real-time.
 
 3. Ruang Lingkup
@@ -25,8 +25,6 @@ Sistem mencakup pengelolaan:
 - Master Nomor
 - Master Map
 - Data Dokumen
-- Peminjaman Dokumen
-- Pengembalian Dokumen
 - Laporan Arsip
 
 4. Struktur Lokasi Arsip
@@ -87,6 +85,14 @@ Data yang disimpan antara lain:
 - Lokasi Arsip
 - File Digital (opsional)
 
+Fungsi Dokumen
+
+- Menambah dokumen.
+- Mengubah dokumen.
+- Menghapus dokumen.
+- Menampilkan daftar dokumen.
+- Menentukan lokasi arsip dokumen.
+
 Pencarian Dokumen
 
 Pengguna dapat mencari berdasarkan:
@@ -101,29 +107,11 @@ Pengguna dapat mencari berdasarkan:
 - Nomor
 - Map
 
-Peminjaman Dokumen
-
-Sistem mencatat:
-
-- Peminjam
-- Tanggal Pinjam
-- Estimasi Kembali
-- Status Pinjam
-
-Pengembalian Dokumen
-
-Sistem mencatat:
-
-- Tanggal Kembali
-- Kondisi Dokumen
-- Status Selesai
-
 Laporan
 
 - Laporan seluruh dokumen.
 - Laporan berdasarkan lokasi.
-- Laporan dokumen dipinjam.
-- Laporan dokumen kembali.
+- Laporan dokumen berdasarkan status.
 - Laporan jumlah dokumen per ruangan.
 
 6. Non Functional Requirement
@@ -147,14 +135,13 @@ Petugas Arsip
 
 - Mengelola dokumen.
 - Menentukan lokasi arsip.
-- Mengelola peminjaman.
-- Mengelola pengembalian.
+- Mengedit dokumen.
+- Menghapus dokumen.
 
 User
 
 - Melakukan pencarian dokumen.
-- Mengajukan peminjaman.
-- Melihat status peminjaman.
+- Melihat detail dokumen.
 
 8. Alur Bisnis
 
@@ -167,8 +154,8 @@ User
 1. Petugas memasukkan data dokumen.
 1. Dokumen ditempatkan pada lokasi arsip yang dipilih.
 1. Pengguna mencari dokumen melalui sistem.
-1. Jika diperlukan, pengguna melakukan peminjaman.
-1. Setelah selesai, dokumen dikembalikan dan status diperbarui.
+1. Petugas atau administrator mengedit data dokumen jika diperlukan.
+1. Petugas atau administrator menghapus dokumen jika diperlukan.
 
 1. Manfaat Sistem
 
@@ -197,7 +184,7 @@ Sistem Arsip Dokumentasi dirancang dengan 3 layer utama:
    - Authentication & Authorization
    - Master Data Management
    - Document Management
-   - Loan Management
+   - Document Edit & Delete Management
    - Report Generator
    - Audit Logging
 
@@ -224,7 +211,6 @@ Sistem Arsip Dokumentasi dirancang dengan 3 layer utama:
 
 - `documents` - Data dokumen dengan metadata
 - `users` - User sistem
-- `loan_history` - Riwayat peminjaman
 
 **Tabel Sistem:**
 
@@ -251,20 +237,14 @@ Room (1) ──→ (N) Cabinet ──→ (N) Shelf ──→ (N) Box ──→ (
 
 **FASE 2: Operasional Harian (Petugas Arsip)** 7. Petugas input data dokumen (nomor, nama, jenis, kategori, pemilik, upload file) 8. Petugas tentukan lokasi arsip fisik untuk dokumen 9. Sistem update status dokumen menjadi TERSEDIA
 
-**FASE 3: Pencarian & Peminjaman (User)** 10. User login ke sistem 11. User cari dokumen (berdasarkan nomor, nama, jenis, kategori, atau lokasi) 12. User lihat detail dokumen termasuk lokasi arsip-nya 13. Jika dokumen tersedia, user klik "Pinjam" dan isi form permohonan 14. Sistem save permohonan dengan status PENDING
+**FASE 3: Pencarian & Operasional Dokumen (User/Petugas)** 10. User login ke sistem 11. User cari dokumen (berdasarkan nomor, nama, jenis, kategori, atau lokasi) 12. User lihat detail dokumen termasuk lokasi arsipnya 13. Jika perlu, petugas klik "Edit" untuk memperbarui metadata atau lokasi 14. Jika perlu, petugas klik "Hapus" untuk menghapus dokumen dari katalog
 
-**FASE 4: Approval Peminjaman (Petugas Arsip)** 15. Petugas review permohonan peminjaman 16. Petugas klik APPROVE atau REJECT 17. Jika APPROVE: - Sistem update status peminjaman = APPROVED - Sistem update status dokumen = LOANED_OUT - Notifikasi dikirim ke peminjam 18. Jika REJECT: Notifikasi penolakan dikirim ke peminjam
+**FASE 4: Laporan & Monitoring** 15. Admin/Petugas dapat membuat berbagai laporan: - Laporan seluruh dokumen - Laporan berdasarkan lokasi - Laporan dokumen berdasarkan status - Laporan jumlah dokumen per ruangan
 
-**FASE 5: Pengambilan & Penggunaan** 19. User ambil dokumen di lokasi arsip yang ditentukan 20. User gunakan dokumen sesuai kebutuhan
-
-**FASE 6: Pengembalian (Petugas Arsip)** 21. Petugas akses menu pengembalian dokumen 22. Petugas cari dan pilih peminjaman yang aktif 23. Petugas isi form pengembalian: - Tanggal kembali - Kondisi dokumen (baik/rusak ringan/rusak berat) 24. Sistem hitung keterlambatan dan denda otomatis 25. Sistem update status peminjaman = COMPLETED 26. Sistem update status dokumen = TERSEDIA 27. Jika rusak atau terlambat, notifikasi dikirim ke peminjam
-
-**FASE 7: Laporan & Monitoring** 28. Admin/Petugas dapat membuat berbagai laporan: - Laporan seluruh dokumen - Laporan berdasarkan lokasi - Laporan dokumen dipinjam - Laporan dokumen terlambat - Laporan jumlah dokumen per ruangan
-
-### 13. Flow Peminjaman Dokumen (Detail)
+### 13. Flow Pengelolaan Dokumen (Detail)
 
 ```
-User Ingin Pinjam
+User mencari dokumen
     ↓
 [Cari Dokumen] - Filter: nomor, nama, jenis, kategori, lokasi
     ↓
@@ -273,89 +253,20 @@ Hasil Pencarian Ditampilkan
 Dokumen Ditemukan? ────→ Tidak → Notifikasi "Tidak Ada Hasil"
     ↓ Ya
 [Lihat Detail Dokumen]
-Periksa Status Ketersediaan
     ↓
-Tersedia? ────→ Tidak (Sedang Dipinjam) → Tampilkan "Estimasi Kembali" → Kembali ke Cari
-    ↓ Ya
-[Klik Tombol "Pinjam"]
+Pilihan Aksi: Edit / Hapus
     ↓
-[Isi Form Peminjaman]
-- Nama Peminjam (auto)
-- Email (auto)
-- Tanggal Pinjam (hari ini)
-- Estimasi Kembali (user pilih)
-- Keperluan (user isi)
+Edit → Tampilkan Form Edit
+Hapus → Tampilkan Konfirmasi Hapus
     ↓
-[Kirim Permohonan]
+[Simpan Perubahan atau Konfirmasi Hapus]
     ↓
-Sistem: Simpan ke DB (Status = PENDING)
+Sistem: Simpan Perubahan atau Hapus Data
     ↓
-Notifikasi ke Petugas Arsip
-    ↓
-⏳ Tunggu Persetujuan Petugas
-    ↓
-Petugas Review & Decide
-    ↓
-REJECTED ──→ Kirim Notifikasi Penolakan
-    ↓ APPROVED
-Sistem Update: Status = APPROVED
-    ↓
-Kirim Notifikasi Sukses ke Peminjam
-(Nomor Referensi, Lokasi Pengambilan, Tanggal Harus Kembali)
-    ↓
-User Ambil Dokumen di Lokasi Arsip
-    ↓
-✅ PEMINJAMAN AKTIF
+Tampilkan Notifikasi Sukses
 ```
 
-### 14. Flow Pengembalian Dokumen (Detail)
-
-```
-Petugas Akses Menu Pengembalian
-    ↓
-[Cari Peminjaman Aktif]
-Filter: Nomor Referensi, Nama Peminjam, atau Status = APPROVED
-    ↓
-Tampilkan Daftar Peminjaman Aktif
-    ↓
-[Pilih Peminjaman]
-    ↓
-[Lihat Detail]
-- Dokumen yang Dipinjam
-- Tanggal Pinjam
-- Tanggal Harus Kembali
-- Status Peminjaman
-    ↓
-[Isi Form Pengembalian]
-- Tanggal Kembali (hari ini)
-- Kondisi: Baik / Rusak Ringan / Rusak Berat
-- Catatan (opsional)
-    ↓
-[Simpan Pengembalian]
-    ↓
-Sistem Hitung Keterlambatan
-    ↓
-Terlambat? ────→ Ya → Hitung Denda (Hari Terlambat × Tarif Harian)
-    ↓ Tidak         ↓
-    └──────────→ Catat Denda di DB
-                 Kirim Notifikasi Denda
-                 ↓
-Sistem Cek Kondisi Dokumen
-    ↓
-├─ Baik ──────→ Update Status Peminjaman = COMPLETED
-├─ Rusak Ringan → Catat Biaya Perbaikan
-└─ Rusak Berat → Hitung Ganti Rugi
-    ↓
-Update Status Dokumen = TERSEDIA
-    ↓
-Kirim Notifikasi Pengembalian Sukses
-    ↓
-Arsipkan ke Loan History
-    ↓
-✅ PENGEMBALIAN SELESAI
-```
-
-### 15. Hak Akses Berdasarkan Role
+### 14. Hak Akses Berdasarkan Role
 
 **ADMINISTRATOR**
 
@@ -371,21 +282,15 @@ Arsipkan ke Loan History
 
 - Input Data Dokumen
 - Tentukan Lokasi Arsip Dokumen
-- Update Status Dokumen
-- Manage Peminjaman (Approve/Reject)
-- Catat Pengembalian Dokumen
-- Hitung Denda Otomatis
-- Laporan Operasional (Dokumen, Peminjaman, Pengembalian)
+- Edit Dokumen
+- Hapus Dokumen
+- Laporan Operasional Dokumen
 - View Audit Log
 
-**USER/PEMINJAM**
+**USER**
 
 - Search Dokumen (Filter: nomor, nama, jenis, kategori, lokasi)
 - Lihat Detail Dokumen
-- Ajukan Peminjaman
-- Lihat Status Peminjaman
-- Lihat Riwayat Peminjaman
-- Lihat Denda (jika ada)
 
 ### 16. Tech Stack & Library
 
@@ -412,32 +317,17 @@ Arsipkan ke Loan History
 
 **Status Dokumen:**
 
-- `AVAILABLE` - Dokumen tersedia untuk dipinjam
-- `LOANED_OUT` - Sedang dipinjam
+- `AVAILABLE` - Dokumen tersedia
 - `ARCHIVED` - Diarsipkan
-- `DAMAGED` - Rusak tidak bisa dipinjam
-
-**Status Peminjaman:**
-
-- `PENDING` - Permohonan menunggu persetujuan
-- `APPROVED` - Permohonan disetujui, siap diambil
-- `ACTIVE` - Peminjaman sedang berjalan
-- `OVERDUE` - Peminjaman terlambat
-- `COMPLETED` - Pengembalian selesai
-- `REJECTED` - Permohonan ditolak
-
-**Kondisi Dokumen (saat pengembalian):**
-
-- `BAIK` - Kondisi baik, tidak ada kerusakan
-- `RUSAK_RINGAN` - Ada kerusakan kecil, masih bisa dipinjam lagi
-- `RUSAK_BERAT` - Rusak parah, tidak bisa dipinjam, perlu penggantian
+- `DAMAGED` - Dokumen rusak atau tidak layak gunakan
+- `DELETED` - Dokumen telah dihapus secara logis
 
 ### 18. Fitur Utama
 
 1. **Authentication & Authorization**
 
    - Login dengan email & password
-   - Register user baru (pending approval)
+   - Manage user dan role
    - Session management
    - Role-based access control
 
@@ -450,33 +340,25 @@ Arsipkan ke Loan History
 3. **Document Management**
 
    - Input dokumen dengan metadata lengkap
-   - Upload file digital (PDF, DOC, XLS, JP, PNG, dst)
-   - Tentukan lokasi arsip fisik (Ruangan → Map)
+   - Upload file digital (PDF, DOC, XLS, JPG, PNG, dst)
+   - Tentukan lokasi arsip fisik (Ruangan → Folder)
    - Search dengan multiple filter
-   - Update/Delete dokumen
+   - Edit dokumen
+   - Hapus dokumen
    - View digital file
 
-4. **Loan Management**
-
-   - User ajukan permohonan peminjaman
-   - Petugas approve/reject permohonan
-   - Track status peminjaman real-time
-   - Auto-calculate denda keterlambatan
-   - Catat kondisi dokumen saat kembali
-   - Generate bukti pengembalian
-
-5. **Report & Analytics**
+4. **Report & Analytics**
 
    - Laporan seluruh dokumen
    - Laporan berdasarkan lokasi/ruangan
-   - Laporan dokumen dipinjam/overdue
+   - Laporan dokumen berdasarkan status
    - Dashboard dengan statistik & chart
    - Export ke PDF/Excel
 
-6. **System Administration**
+5. **System Administration**
    - User management (create, edit, delete, activate/deactivate)
    - Role & Permission management
-   - System settings (nama perusahaan, logo, tarif denda)
+   - System settings (nama perusahaan, logo, informasi kantor)
    - Database backup & restore
    - Audit log viewer
 
@@ -501,34 +383,31 @@ Arsipkan ke Loan History
 - Petugas klik Simpan
 - Sistem update status dokumen = AVAILABLE
 
-**Use Case 3: User Cari & Pinjam Dokumen**
+**Use Case 3: User Cari Dokumen & Lihat Detail**
 
 - User login
 - User klik "Cari Dokumen"
-- User cari dengan filter: Nama = "Kontrak 2024", Jenis = "Kontrak"
+- User mencari dengan filter: Nama, Jenis, Kategori, atau Lokasi
 - Sistem tampilkan hasil dengan lokasi arsip-nya
-- User klik detail dokumen → Lihat lokasi di Ruangan A, Lemari 1, Rak 2, dst
-- User klik "Pinjam" → Isi form → Kirim permohonan
-- Sistem kirim notifikasi ke Petugas
+- User klik detail dokumen → Lihat metadata dan lokasi fisik
 
-**Use Case 4: Petugas Approve Peminjaman**
+**Use Case 4: Petugas Edit Dokumen**
 
 - Petugas login
-- Petugas lihat daftar permohonan peminjaman (Status = PENDING)
-- Petugas review → Klik APPROVE
-- Sistem update status = APPROVED
-- Sistem kirim notifikasi ke User dengan lokasi pengambilan
+- Petugas buka daftar dokumen
+- Petugas pilih dokumen yang akan diubah
+- Petugas edit metadata, kategori, atau lokasi arsip
+- Petugas simpan perubahan
+- Sistem update data dokumen dan tampilkan notifikasi sukses
 
-**Use Case 5: Petugas Catat Pengembalian**
+**Use Case 5: Petugas Hapus Dokumen**
 
-- User sudah selesai pakai dokumen
-- Petugas buka menu "Pengembalian Dokumen"
-- Petugas cari permohonan peminjaman user
-- Petugas isi form: Tanggal Kembali, Kondisi = BAIK
-- Sistem hitung keterlambatan (jika ada) → Denda = 0
-- Sistem update status peminjaman = COMPLETED
-- Sistem update status dokumen = AVAILABLE
-- Sistem kirim bukti pengembalian ke User
+- Petugas login
+- Petugas cari dokumen yang tidak lagi diperlukan
+- Petugas pilih aksi "Hapus"
+- Sistem tampilkan konfirmasi penghapusan
+- Petugas konfirmasi
+- Sistem hapus dokumen secara logis dan catat audit log
 
 **Use Case 6: Admin Lihat Laporan**
 
@@ -561,12 +440,12 @@ Arsipkan ke Loan History
 - Search & filter
 - Document detail view
 
-**Sprint 4: Loan Management (2-3 minggu)**
+**Sprint 4: Document Operations (2-3 minggu)**
 
-- Loan request form
-- Approval system
-- Return processing
-- Fine calculation
+- Document edit form
+- Document delete confirmation
+- Location update
+- Approval tidak diperlukan untuk edit/hapus sederhana
 
 **Sprint 5: Reporting & Admin (1-2 minggu)**
 
@@ -630,36 +509,16 @@ Fields:
 - owner_name, owner_department
 - folder_id (FK - lokasi fisik)
 - file_path, file_name, file_size, file_type
-- status: AVAILABLE / LOANED_OUT / ARCHIVED / DAMAGED
+- status: AVAILABLE / ARCHIVED / DAMAGED
 - retention_year, is_important, total_copies
 - created_by, updated_at, deleted_at
   `
 
 ---
 
-#### Tabel: loan_history (CORE)
-
-`
-Fields:
-
-- loan_number (UNIQUE)
-- document_id (FK)
-- user_id (FK - peminjam)
-- loan_date, estimated_return_date, actual_return_date
-- status: PENDING ? APPROVED ? ACTIVE ? COMPLETED/REJECTED/OVERDUE
-- reason_loan (TEXT)
-- approval_by (FK), approval_date
-- condition_on_return: BAIK / RUSAK_RINGAN / RUSAK_BERAT
-- fine_amount, fine_reason
-- returned_by (FK), returned_date
-  `
-
----
-
-#### Tabel: audit_logs, fine_rates, system_settings
+#### Tabel: audit_logs, system_settings
 
 - **audit_logs**: user_id, activity, table_name, record_id, old_value, new_value
-- **fine_rates**: rate_type (OVERDUE/DAMAGE_LIGHT/DAMAGE_HEAVY), amount_per_day, max_amount, status
 - **system_settings**: setting_key, setting_value, setting_type (string/number/boolean/json)
 
 ---
@@ -669,64 +528,18 @@ Fields:
 **Document Model:**
 `php
 class Document extends Model {
-public function documentType() { return \->belongsTo(DocumentType::class); }
-public function category() { return \->belongsTo(DocumentCategory::class); }
-public function folder() { return \->belongsTo(Folder::class); }
-public function loanHistories() { return \->hasMany(LoanHistory::class); }
-public function activeLoan() { return \->hasOne(LoanHistory::class)
-->where('status', '!=', 'COMPLETED'); }
+public function documentType() { return $this->belongsTo(DocumentType::class); }
+public function category() { return $this->belongsTo(DocumentCategory::class); }
+public function folder() { return $this->belongsTo(Folder::class); }
 
-    public function scopeAvailable(\) { return \->where('status', 'AVAILABLE'); }
-    public function canBeBorrowed() { return \->status === 'AVAILABLE'; }
-    public function getLocationPath() { return \->folder->getFullLocation(); }
-
-}
-`
-
-**LoanHistory Model:**
-`php
-class LoanHistory extends Model {
-public function document() { return \->belongsTo(Document::class); }
-public function user() { return \->belongsTo(User::class, 'user_id'); }
-public function approvedBy() { return \->belongsTo(User::class, 'approval_by'); }
-public function returnedBy() { return \->belongsTo(User::class, 'returned_by'); }
-
-    public function scopeOverdue(\) { return \->whereIn('status', ['ACTIVE', 'OVERDUE'])
-        ->where('estimated_return_date', '<', now()->toDateString()); }
-
-    public function isOverdue() {
-        return !in_array(\->status, ['COMPLETED', 'REJECTED']) &&
-               now()->toDateString() > \->estimated_return_date;
+    public function scopeActive($query) { return $query->where('status', '!=', 'DELETED'); }
+    public function scopeSearch($query, $term) {
+        return $query->where('document_number', 'like', "%{$term}%")
+            ->orWhere('document_name', 'like', "%{$term}%");
     }
 
-    public function calculateFine() {
-        if (!\->isOverdue()) return 0;
-        \ = FineRate::where('rate_type', 'OVERDUE')->where('status', 'active')->first();
-        \ = \->estimated_return_date->diffInDays(now());
-        return \ ? min(\ * \->amount_per_day, \->max_amount ?? 999999) : 0;
-    }
-
-    public function approve(\) {
-        \->status = 'APPROVED';
-        \->approval_by = \;
-        \->approval_date = now();
-        \->document->status = 'LOANED_OUT';
-        \->document->save();
-        return \->save();
-    }
-
-    public function recordReturn(\, \, \ = null) {
-        \->status = 'COMPLETED';
-        \->actual_return_date = now()->toDateString();
-        \->condition_on_return = \;
-        \->returned_by = \;
-        if (\->isOverdue()) {
-            \->fine_amount = \->calculateFine();
-            \->fine_reason = 'Keterlambatan Pengembalian';
-        }
-        \->document->status = 'AVAILABLE';
-        \->document->save();
-        return \->save();
+    public function getLocationPath() {
+        return $this->folder->getFullLocation();
     }
 
 }
@@ -735,13 +548,17 @@ public function returnedBy() { return \->belongsTo(User::class, 'returned_by'); 
 **Folder Model (Location Path):**
 `php
 class Folder extends Model {
-public function number() { return \->belongsTo(Number::class); }
-public function documents() { return \->hasMany(Document::class); }
+public function number() { return $this->belongsTo(Number::class); }
+public function documents() { return $this->hasMany(Document::class); }
 
     public function getFullLocation() {
-        \ = \->number; \ = \->box; \ = \->shelf;
-        \ = \->cabinet; \ = \->room;
-        return "\->room_code ? \->cabinet_code ? \->shelf_code ? \->box_code ? \->number_code ? \->folder_code";
+        $number = $this->number;
+        $box = $number->box;
+        $shelf = $box->shelf;
+        $cabinet = $shelf->cabinet;
+        $room = $cabinet->room;
+
+        return "{$room->room_code} / {$cabinet->cabinet_code} / {$shelf->shelf_code} / {$box->box_code} / {$number->number_code} / {$this->folder_code}";
     }
 
 }
@@ -752,10 +569,8 @@ public function documents() { return \->hasMany(Document::class); }
 ### 23. Relationships Diagram
 
 `Room (1) --[N]? Cabinet --[N]? Shelf --[N]? Box --[N]? Number --[N]? Folder --[N]? Document
-                                                                                        ?
-DocumentType (1) --[N]? Document                                               LoanHistory
-DocumentCategory (1) --[N]? Document                                                 ?
-                                                                               User (peminjam)
+DocumentType (1) --[N]? Document
+DocumentCategory (1) --[N]? Document
 User (1) --[N]? AuditLog`
 
 ---
@@ -764,43 +579,23 @@ User (1) --[N]? AuditLog`
 
 **Cari dokumen di ruangan tertentu:**
 \\\php
-\ = Document::whereHas('folder.number.box.shelf.cabinet',
-fn(\) => \->where('room_id', 1)
-)->get();
+$documents = Document::whereHas('folder.number.box.shelf.cabinet', function ($query) {
+$query->where('room_id', 1);
+})->get();
 
 // Lihat lokasi lengkap
-foreach(\ as \) {
-echo \->folder->getFullLocation(); // R001 ? L01 ? R01 ? B01 ? N01 ? F001
+foreach ($documents as $document) {
+echo $document->folder->getFullLocation();
 }
 \\\
 
-**Manajemen peminjaman:**
+**Contoh update dokumen:**
 \\\php
-// Buat permohonan
-\ = LoanHistory::create([
-'loan_number' => 'LOAN-'.date('YmdHis'),
-'document_id' => 5,
-'user_id' => 3,
-'loan_date' => now(),
-'estimated_return_date' => now()->addDays(7),
-'reason_loan' => 'Keperluan kerja',
-'status' => 'PENDING'
+$document = Document::find(5);
+$document->update([
+'document_name' => 'Revisi Kontrak 2026',
+'folder_id' => 12,
 ]);
-
-// Approve (oleh staff)
-\->approve(\);
-
-// Catat pengembalian
-\->recordReturn('BAIK', \);
-
-// Cek terlambat
-\ = LoanHistory::overdue()->with(['document', 'user'])->get();
-
-// Laporan per kategori
-\ = Document::selectRaw('document_category_id, COUNT(\*) as total')
-->groupBy('document_category_id')
-->with('category')
-->get();
 \\\
 
 Database design Anda sekarang **100% LENGKAP** dengan struktur tabel, models, relasi, dan contoh queries! ??
@@ -809,7 +604,7 @@ Database design Anda sekarang **100% LENGKAP** dengan struktur tabel, models, re
 
 ## DAFTAR LENGKAP TABEL YANG DIBUTUHKAN
 
-### Total: 18 Tabel
+### Total: 16 Tabel
 
 #### KATEGORI 1: AUTHENTICATION & MANAJEMEN USER (5 tabel)
 
@@ -849,29 +644,27 @@ Room ? Cabinet ? Shelf ? Box ? Number ? Folder
 
 ---
 
-#### KATEGORI 4: DATA UTAMA - DOKUMEN & PEMINJAMAN (2 tabel)
+#### KATEGORI 4: DATA UTAMA - DOKUMEN (1 tabel)
 
-| No  | Tabel        | Fungsi                                                             | Keys                                  |
-| --- | ------------ | ------------------------------------------------------------------ | ------------------------------------- |
-| 14  | documents    | **DATA DOKUMEN UTAMA** (metadata lengkap + lokasi fisik)           | id, document_number, folder_id        |
-| 15  | loan_history | **RIWAYAT PEMINJAMAN & PENGEMBALIAN** (tracking setiap peminjaman) | id, loan_number, document_id, user_id |
+| No  | Tabel     | Fungsi                                                   | Keys                           |
+| --- | --------- | -------------------------------------------------------- | ------------------------------ |
+| 14  | documents | **DATA DOKUMEN UTAMA** (metadata lengkap + lokasi fisik) | id, document_number, folder_id |
 
 ---
 
-#### KATEGORI 5: KONFIGURASI & TARIF DENDA (2 tabel)
+#### KATEGORI 5: KONFIGURASI & SISTEM (1 tabel)
 
-| No  | Tabel           | Fungsi                                                 |
-| --- | --------------- | ------------------------------------------------------ |
-| 16  | fine_rates      | Tarif denda (OVERDUE, DAMAGE_LIGHT, DAMAGE_HEAVY)      |
-| 17  | system_settings | Konfigurasi global (nama perusahaan, logo, tarif, dll) |
+| No  | Tabel           | Fungsi                                                |
+| --- | --------------- | ----------------------------------------------------- |
+| 15  | system_settings | Konfigurasi global (nama perusahaan, logo, informasi) |
 
 ---
 
 #### KATEGORI 6: AUDIT & LOGGING (1 tabel)
 
-| No  | Tabel      | Fungsi                                                                  |
-| --- | ---------- | ----------------------------------------------------------------------- |
-| 18  | audit_logs | Tracking aktivitas user (CREATE, UPDATE, DELETE pada tabel konkritikal) |
+| No  | Tabel      | Fungsi                                                              |
+| --- | ---------- | ------------------------------------------------------------------- |
+| 16  | audit_logs | Tracking aktivitas user (CREATE, UPDATE, DELETE pada tabel penting) |
 
 ---
 
@@ -897,16 +690,14 @@ MASTER DATA (2 tabel)
 +- document_types
 +- document_categories
 
-DATA UTAMA (2 tabel)
+DATA UTAMA (1 tabel)
 +- documents (? CORE)
-+- loan_history (? CORE)
 
-SUPPORT (3 tabel)
-+- fine_rates
+SUPPORT (2 tabel)
 +- system_settings
 +- audit_logs
 
-TOTAL: 18 TABEL
+TOTAL: 16 TABEL
 \\\
 
 ---
@@ -916,7 +707,6 @@ TOTAL: 18 TABEL
 **CRITICAL (?? Wajib Ada):**
 
 - documents ? Data dokumen (jantung sistem)
-- loan_history ? Riwayat peminjaman (audit trail)
 - rooms, cabinets, shelves, boxes, numbers, folders ? Hierarki lokasi (6 tabel)
 - users ? User/login (autentikasi)
 
@@ -928,7 +718,6 @@ TOTAL: 18 TABEL
 
 **SUPPORT (?? Pendukung):**
 
-- fine_rates ? Perhitungan denda
 - system_settings ? Konfigurasi sistem
 - audit_logs ? Tracking aktivitas
 
@@ -950,10 +739,8 @@ Rekomendasi urutan creating migrations:
 10. document_types (independent)
 11. document_categories (independent)
 12. documents (FK: document_types, document_categories, folders)
-13. loan_history (FK: documents, users)
-14. fine_rates (independent)
-15. system_settings (independent)
-16. audit_logs (FK: users)
+13. system_settings (independent)
+14. audit_logs (FK: users)
 
 ---
 
@@ -970,24 +757,9 @@ Menyimpan data dokumen dengan metadata lengkap:
 - owner_name, owner_department (pemilik dokumen)
 - folder_id (lokasi penyimpanan fisik)
 - file_path (path file digital jika ada)
-- status (AVAILABLE/LOANED_OUT/ARCHIVED/DAMAGED)
+- status (AVAILABLE/ARCHIVED/DAMAGED/DELETED)
 - retention_year (berapa tahun disimpan)
 - is_important (flag dokumen penting)
-
-#### Tabel: loan_history (TABEL INTI)
-
-Menyimpan riwayat setiap peminjaman dokumen:
-
-- loan_number (UNIQUE - nomor referensi peminjaman)
-- document_id (dokumen yang dipinjam)
-- user_id (siapa yang meminjam)
-- loan_date, estimated_return_date, actual_return_date (tanggal)
-- status (PENDING ? APPROVED ? ACTIVE ? COMPLETED/OVERDUE/REJECTED)
-- reason_loan (alasan peminjaman)
-- approval_by, approval_date (siapa approve, kapan)
-- condition_on_return (BAIK/RUSAK_RINGAN/RUSAK_BERAT)
-- fine_amount, fine_reason (denda otomatis)
-- returned_by, returned_date (siapa catat pengembalian, kapan)
 
 #### Tabel: Hierarki Lokasi (6 tabel)
 
@@ -1015,31 +787,23 @@ Saat membuat migration files, gunakan nama:
 10. 2024_01_01_000010_create_document_types_table
 11. 2024_01_01_000011_create_document_categories_table
 12. 2024_01_01_000012_create_documents_table
-13. 2024_01_01_000013_create_loan_history_table
-14. 2024_01_01_000014_create_fine_rates_table
-15. 2024_01_01_000015_create_system_settings_table
-16. 2024_01_01_000016_create_audit_logs_table
-17. 2024_01_01_000017_create_model_has_roles_table
-18. 2024_01_01_000018_create_model_has_permissions_table
+13. 2024_01_01_000013_create_system_settings_table
+14. 2024_01_01_000014_create_audit_logs_table
+15. 2024_01_01_000015_create_model_has_roles_table
+16. 2024_01_01_000016_create_model_has_permissions_table
 
 ---
 
 ### RELASI ANTAR TABEL OVERVIEW
 
 \\\
-User (1) --[N]-? LoanHistory
-----[N]--? AuditLog
+User (1) --[N]-? AuditLog
 ----[N]--? created_by (Rooms, Cabinets, etc)
 
 DocumentType (1) --[N]-? Document
 DocumentCategory (1) --[N]-? Document
 
 Room (1) --[N]-? Cabinet --[N]-? Shelf --[N]-? Box --[N]-? Number --[N]-? Folder --[N]-? Document
-
-Document (1) --[N]-? LoanHistory
-+- user_id (peminjam)
-+- approval_by (staff yang approve)
-+- returned_by (staff yang catat return)
 \\\
 
 ## Sistem dokumentasi tabel sudah **100% LENGKAP** dengan kategorisasi, prioritas, dependency, dan penjelasan detail! ??
@@ -1224,43 +988,7 @@ Document (1) --[N]-? LoanHistory
 - updated_at
 - deleted_at
 
-**loan_history**
-
-- id
-- loan_number
-- document_id
-- user_id
-- loan_date
-- estimated_return_date
-- actual_return_date
-- status
-- reason_loan
-- approval_by
-- approval_date
-- condition_on_return
-- fine_amount
-- fine_reason
-- returned_by
-- returned_date
-- notes
-- created_at
-- updated_at
-- deleted_at
-
-### Konfigurasi & Tarif Denda
-
-**fine_rates**
-
-- id
-- rate_type
-- amount_per_day
-- max_amount
-- description
-- status
-- created_by
-- created_at
-- updated_at
-- deleted_at
+### Konfigurasi & Sistem
 
 **system_settings**
 
@@ -1272,6 +1000,7 @@ Document (1) --[N]-? LoanHistory
 - status
 - created_at
 - updated_at
+- deleted_at
 
 ### Audit & Logging
 
@@ -1301,7 +1030,7 @@ Database dibagi menjadi 4 area utama:
 3. Master Data Dokumen
    - `document_types`, `document_categories`
 4. Data Operasional
-   - `documents`, `loan_history`, `fine_rates`, `system_settings`, `audit_logs`
+   - `documents`, `system_settings`, `audit_logs`
 
 ### 27.2. Relasi Utama
 
@@ -1313,10 +1042,6 @@ Database dibagi menjadi 4 area utama:
 - `folders` 1 → N `documents`
 - `document_types` 1 → N `documents`
 - `document_categories` 1 → N `documents`
-- `documents` 1 → N `loan_history`
-- `users` 1 → N `loan_history` (`user_id` sebagai peminjam)
-- `users` 1 → N `loan_history` (`approval_by` sebagai petugas approval)
-- `users` 1 → N `loan_history` (`returned_by` sebagai petugas return)
 - `users` 1 → N `audit_logs`
 
 ### 27.3. Detail Relasi dan Foreign Key
@@ -1380,14 +1105,6 @@ Database dibagi menjadi 4 area utama:
 - `folder_id` ? FK `folders.id`
 - `document_type_id` ? FK `document_types.id`
 - `document_category_id` ? FK `document_categories.id`
-- relasi ke `loan_history.document_id`
-
-**loan_history**
-
-- `document_id` ? FK `documents.id`
-- `user_id` ? FK `users.id` (peminjam)
-- `approval_by` ? FK `users.id` (petugas approval)
-- `returned_by` ? FK `users.id` (petugas pencatat pengembalian)
 
 **audit_logs**
 
@@ -1397,10 +1114,9 @@ Database dibagi menjadi 4 area utama:
 ### 27.4. Diagram Relasi Sederhana
 
 ```
-rooms -> cabinets -> shelves -> boxes -> numbers -> folders -> documents -> loan_history
+rooms -> cabinets -> shelves -> boxes -> numbers -> folders -> documents
 document_types -> documents
 document_categories -> documents
-users -> loan_history
 users -> audit_logs
 ```
 
@@ -1408,9 +1124,8 @@ users -> audit_logs
 
 - Lokasi fisik menggunakan pohon 1 ke banyak dari `rooms` sampai `folders`.
 - Setiap `document` disimpan di satu `folder`.
-- `loan_history` menyimpan semua event peminjaman dan pengembalian.
-- `approval_by` dan `returned_by` mereferensikan `users` untuk menelusuri petugas.
 - `document_types` dan `document_categories` adalah master klasifikasi dokumen.
+- `audit_logs` mencatat perubahan data dan operasi CRUD.
 
 ### 27.6. Contoh FK dan Index yang Direkomendasikan
 
@@ -1422,19 +1137,16 @@ users -> audit_logs
 - `documents.folder_id` INDEX + FK -> `folders.id`
 - `documents.document_type_id` INDEX + FK -> `document_types.id`
 - `documents.document_category_id` INDEX + FK -> `document_categories.id`
-- `loan_history.document_id` INDEX + FK -> `documents.id`
-- `loan_history.user_id` INDEX + FK -> `users.id`
-- `loan_history.approval_by` INDEX + FK -> `users.id`
-- `loan_history.returned_by` INDEX + FK -> `users.id`
 - `audit_logs.user_id` INDEX + FK -> `users.id`
 
 ### 27.7. Catatan Implementasi
 
 - Gunakan `soft deletes` pada tabel master dan dokumen untuk audit dan pemulihan.
-- Gunakan `ENUM` atau `VARCHAR` untuk nilai status di `documents` dan `loan_history`.
-- Gunakan `ON DELETE RESTRICT` atau `ON DELETE SET NULL` agar histori peminjaman tetap terjaga.
+- Gunakan `ENUM` atau `VARCHAR` untuk nilai status di `documents`.
+- Gunakan `ON DELETE RESTRICT` atau `ON DELETE SET NULL` agar relasi lokasi tetap terjaga.
 
 ---
+
 Credit: Muhamad Kosasih 2026
 
 ## 28. Implementasi dengan Laravel Livewire
@@ -1445,7 +1157,7 @@ Sistem ini dapat dibangun menggunakan Laravel Livewire untuk interface interakti
 
 - CRUD data master lokasi (ruangan / lemari / rak / box / nomor / folder)
 - CRUD dokumen dan upload file
-- Form peminjaman dan pengembalian dokumen
+- Form edit dan hapus dokumen
 - Filter pencarian dan pagination real-time
 - Validasi dan notifikasi langsung
 
@@ -1470,21 +1182,20 @@ Gunakan komponen Livewire untuk setiap modul utama:
 - `Location/FolderIndex`
 - `Document/DocumentIndex`
 - `Document/DocumentForm`
-- `Loan/LoanRequest`
-- `Loan/LoanApproval`
-- `Loan/ReturnForm`
+- `Document/DocumentDeleteConfirm`
 - `Report/DocumentReport`
-- `Report/LoanReport`
 
 ### 28.4. Contoh Komponen Livewire
 
 **DocumentIndex.php**
+
 - menampilkan daftar dokumen
 - pencarian by nomor / nama / jenis / kategori / lokasi
 - pagination Livewire
 - event edit / delete
 
 **DocumentForm.php**
+
 - form input dokumen
 - `wire:model` untuk semua field
 - validasi `rules`
@@ -1513,19 +1224,72 @@ Gunakan komponen Livewire untuk setiap modul utama:
 Gunakan route sederhana untuk setiap halaman modul:
 
 - `/admin/rooms`
+- `/admin/cabinets`
+- `/admin/shelves`
+- `/admin/boxes`
+- `/admin/numbers`
+- `/admin/folders`
+- `/admin/document-types`
+- `/admin/document-categories`
 - `/admin/documents`
-- `/admin/loans`
-- `/admin/returns`
-- `/admin/reports`
+- `/admin/documents/create`
+- `/admin/documents/{id}/edit`
+- `/admin/documents/{id}/delete`
+- `/admin/reports/documents`
+- `/admin/reports/audit-logs`
 
-Setiap route kemudian memanggil View Blade yang berisi `@livewire('location.room-index')` atau `@livewire('document.document-index')`.
+Setiap route kemudian memanggil View Blade yang berisi komponen Livewire sesuai modul, misalnya `@livewire('location.room-index')`, `@livewire('document.document-index')`, atau `@livewire('report.document-report')`.
+
+Contoh pengelompokan route:
+
+1. **Location**
+
+   - `/admin/rooms`
+   - `/admin/cabinets`
+   - `/admin/shelves`
+   - `/admin/boxes`
+   - `/admin/numbers`
+   - `/admin/folders`
+
+2. **Master Data Dokumen**
+
+   - `/admin/document-types`
+   - `/admin/document-categories`
+
+3. **Dokumen**
+
+   - `/admin/documents`
+   - `/admin/documents/create`
+   - `/admin/documents/{id}/edit`
+   - `/admin/documents/{id}/delete`
+
+4. **Laporan**
+   - `/admin/reports/documents`
+   - `/admin/reports/audit-logs`
+
+Jika ingin lebih rapi, route juga bisa diberi nama:
+
+- `admin.rooms.index`
+- `admin.cabinets.index`
+- `admin.shelves.index`
+- `admin.boxes.index`
+- `admin.numbers.index`
+- `admin.folders.index`
+- `admin.document-types.index`
+- `admin.document-categories.index`
+- `admin.documents.index`
+- `admin.documents.create`
+- `admin.documents.edit`
+- `admin.documents.delete`
+- `admin.reports.documents`
+- `admin.reports.audit-logs`
 
 ### 28.8. Integrasi dengan Role & Permission
 
 Untuk kontrol akses:
 
 - `@can('view documents')` pada blade
-- `if (! auth()->user()->can('manage loans')) abort(403);` di komponen Livewire
+- `if (! auth()->user()->can('edit documents')) abort(403);` di komponen Livewire
 - gunakan `middleware(['auth', 'role:admin|petugas'])` pada route grup
 
 ### 28.9. Perbaikan UX dengan Livewire
@@ -1541,3 +1305,305 @@ Untuk kontrol akses:
 - untuk upload file, gunakan `wire:model="file"` dan trait `WithFileUploads`.
 - untuk nested select lokasi, load data dependent secara Livewire (misal `cabinets` setelah pilih `room`).
 
+### 28.11. Fungsi CRUD per Modul
+
+Berikut fungsi utama yang disarankan untuk masing-masing CRUD agar struktur komponen rapi dan konsisten.
+
+#### A. CRUD Ruangan
+
+Komponen: `Location/RoomIndex`
+
+- `mount()` untuk inisialisasi data awal.
+  - mengambil data ruangan dari database
+  - mengisi variabel form dan filter default
+  - menyiapkan mode tambah atau edit
+- `render()` untuk menampilkan daftar ruangan.
+  - mengirim data ruangan ke view
+  - menerapkan pencarian dan pagination
+- `resetForm()` untuk mengosongkan form input.
+  - menghapus isi input kode, nama, dan deskripsi
+  - mengembalikan status form ke mode normal
+- `create()` untuk membuka mode tambah data.
+  - mengaktifkan form tambah ruangan
+  - menutup mode edit jika sedang aktif
+- `store()` untuk menyimpan ruangan baru.
+  - validasi kode dan nama ruangan
+  - simpan data ke tabel `rooms`
+  - catat `created_by` dan status aktif
+  - tampilkan notifikasi sukses
+- `edit($id)` untuk memuat data ruangan ke form.
+  - mengambil data ruangan berdasarkan ID
+  - mengisi form dengan data lama
+  - mengubah mode form menjadi edit
+- `update()` untuk menyimpan perubahan ruangan.
+  - validasi data yang diubah
+  - update record ruangan pada database
+  - simpan `updated_by` atau log audit
+- `confirmDelete($id)` untuk membuka dialog hapus.
+  - menyimpan ID ruangan yang akan dihapus
+  - menampilkan modal konfirmasi
+- `destroy()` untuk menghapus ruangan.
+  - cek apakah ruangan masih memiliki relasi lemari
+  - jika aman, hapus secara soft delete
+  - catat aktivitas pada audit log
+- `search()` untuk mencari ruangan berdasarkan kode atau nama.
+  - membaca input kata kunci
+  - memfilter daftar ruangan secara real-time
+
+#### B. CRUD Lemari
+
+Komponen: `Location/CabinetIndex`
+
+- `mount()` untuk memuat daftar ruangan sebagai relasi.
+  - ambil data ruangan untuk dropdown
+  - ambil data lemari awal untuk daftar
+- `render()` untuk menampilkan daftar lemari.
+  - menampilkan lemari beserta nama ruangan induk
+  - menerapkan pencarian dan pagination
+- `resetForm()` untuk reset state form.
+  - kosongkan field input lemari
+  - reset pilihan ruangan
+- `create()` untuk tambah lemari baru.
+  - buka form tambah lemari
+  - set mode tambah aktif
+- `store()` untuk menyimpan lemari.
+  - validasi relasi ruangan dan kode lemari
+  - simpan data lemari ke tabel `cabinets`
+  - catat data pembuat
+- `edit($id)` untuk edit lemari.
+  - load data lemari ke form
+  - siapkan form untuk update
+- `update()` untuk memperbarui lemari.
+  - validasi perubahan
+  - update nama, kode, dan relasi ruangan
+  - simpan log perubahan
+- `confirmDelete($id)` untuk konfirmasi hapus lemari.
+  - simpan ID lemari yang dipilih
+  - tampilkan modal konfirmasi hapus
+- `destroy()` untuk menghapus lemari.
+  - cek apakah lemari masih dipakai oleh rak
+  - soft delete jika aman
+  - update audit log
+- `loadRooms()` untuk mengambil data ruangan saat form dibuka.
+  - mengambil daftar ruangan dari database
+  - digunakan untuk dropdown relasi
+
+#### C. CRUD Rak
+
+Komponen: `Location/ShelfIndex`
+
+- `mount()` untuk menyiapkan data lemari.
+  - load daftar ruangan dan lemari
+  - set default filter lokasi
+- `render()` untuk menampilkan data rak.
+  - menampilkan daftar rak beserta lemari induk
+  - memproses pagination dan search
+- `create()` untuk membuka form rak.
+  - mengaktifkan mode tambah rak
+- `store()` untuk menyimpan rak baru.
+  - validasi lemari induk dan kode rak
+  - simpan ke tabel `shelves`
+- `edit($id)` untuk memuat data rak.
+  - memuat data rak ke form edit
+- `update()` untuk update rak.
+  - update kode, nama, dan deskripsi rak
+  - catat perubahan pada log
+- `confirmDelete($id)` untuk konfirmasi hapus.
+  - simpan ID rak untuk proses hapus
+- `destroy()` untuk menghapus rak.
+  - cek relasi box sebelum hapus
+  - lakukan soft delete
+- `loadCabinets($roomId)` untuk menampilkan lemari sesuai ruangan.
+  - filter lemari berdasarkan ruangan terpilih
+  - digunakan pada nested select
+
+#### D. CRUD Box
+
+Komponen: `Location/BoxIndex`
+
+- `mount()` untuk memuat data rak.
+  - load daftar rak dan lemari
+- `render()` untuk menampilkan daftar box.
+  - menampilkan box beserta nama rak induk
+  - dukung pencarian
+- `create()` untuk membuka form box.
+  - membuka form tambah box
+- `store()` untuk simpan box.
+  - validasi relasi rak dan kode box
+  - simpan ke tabel `boxes`
+- `edit($id)` untuk edit box.
+  - load data box ke form
+- `update()` untuk update box.
+  - perbarui data box yang dipilih
+- `confirmDelete($id)` untuk hapus box.
+  - tampilkan modal konfirmasi hapus box
+- `destroy()` untuk menghapus box.
+  - cek relasi nomor sebelum hapus
+  - soft delete bila aman
+- `loadShelves($cabinetId)` untuk ambil rak berdasarkan lemari.
+  - filter rak sesuai lemari aktif
+
+#### E. CRUD Nomor
+
+Komponen: `Location/NumberIndex`
+
+- `mount()` untuk menyiapkan data box.
+  - load data box untuk dropdown
+- `render()` untuk menampilkan nomor.
+  - menampilkan daftar nomor per box
+- `create()` untuk input nomor baru.
+  - buka form tambah nomor
+- `store()` untuk menyimpan nomor.
+  - validasi kode nomor dan relasi box
+  - simpan ke tabel `numbers`
+- `edit($id)` untuk edit nomor.
+  - memuat nomor ke form edit
+- `update()` untuk update nomor.
+  - update kode dan nama nomor
+- `confirmDelete($id)` untuk hapus nomor.
+  - menampilkan dialog konfirmasi
+- `destroy()` untuk menghapus nomor.
+  - cek apakah nomor masih memiliki folder
+- `loadBoxes($shelfId)` untuk memuat box sesuai rak.
+  - mengambil box berdasarkan rak yang dipilih
+
+#### F. CRUD Map/Folder
+
+Komponen: `Location/FolderIndex`
+
+- `mount()` untuk inisialisasi data nomor.
+  - load daftar nomor sebagai parent
+- `render()` untuk menampilkan folder.
+  - menampilkan daftar folder beserta nomor induk
+- `create()` untuk membuka form folder.
+  - aktifkan mode tambah folder
+- `store()` untuk menyimpan folder baru.
+  - validasi relasi nomor dan kode folder
+  - simpan ke tabel `folders`
+- `edit($id)` untuk edit folder.
+  - load data folder ke form
+- `update()` untuk memperbarui folder.
+  - update kode, nama, dan deskripsi folder
+- `confirmDelete($id)` untuk konfirmasi hapus.
+  - simpan ID folder yang akan dihapus
+- `destroy()` untuk menghapus folder.
+  - cek relasi dokumen sebelum hapus
+  - lakukan soft delete
+- `loadNumbers($boxId)` untuk mengambil nomor berdasarkan box.
+  - filter nomor berdasarkan box terpilih
+
+#### G. CRUD Dokumen
+
+Komponen: `Document/DocumentIndex` dan `Document/DocumentForm`
+
+`DocumentIndex`:
+
+- `mount()` untuk load data awal dan filter.
+  - mengambil data dokumen, jenis, kategori, dan lokasi
+  - menyiapkan keyword pencarian dan filter aktif
+- `render()` untuk menampilkan daftar dokumen.
+  - mengirim hasil pencarian ke view
+  - menampilkan pagination dan tabel dokumen
+- `search()` untuk pencarian berdasarkan nomor, nama, jenis, kategori, atau lokasi.
+  - membaca keyword dan filter lokasi
+  - mempersempit hasil query dokumen
+- `resetFilter()` untuk mengosongkan filter pencarian.
+  - menghapus keyword dan semua filter
+- `openCreate()` untuk membuka form tambah dokumen.
+  - membuka modal atau halaman tambah dokumen
+- `openEdit($id)` untuk membuka form edit dokumen.
+  - memuat data dokumen ke form edit
+- `confirmDelete($id)` untuk membuka modal hapus.
+  - menyimpan ID dokumen untuk konfirmasi hapus
+- `deleteDocument()` untuk menghapus dokumen.
+  - melakukan soft delete pada dokumen
+  - mencatat audit log penghapusan
+
+`DocumentForm`:
+
+- `mount()` untuk isi data default saat tambah atau edit.
+  - menyiapkan data jenis, kategori, dan lokasi
+  - mengisi form saat mode edit
+- `render()` untuk menampilkan form dokumen.
+  - menampilkan field input dan dropdown bertingkat
+- `loadLocations()` untuk memuat pilihan lokasi bertingkat.
+  - memuat seluruh opsi lokasi dari ruangan sampai folder
+- `updatedRoomId()` untuk memuat lemari berdasarkan ruangan.
+  - reset pilihan turunan setelah ruangan berubah
+  - ambil data lemari baru berdasarkan ruangan
+- `updatedCabinetId()` untuk memuat rak berdasarkan lemari.
+  - reset pilihan rak, box, nomor, dan folder
+  - load data rak sesuai lemari
+- `updatedShelfId()` untuk memuat box berdasarkan rak.
+  - reset pilihan box, nomor, dan folder
+  - load box sesuai rak aktif
+- `updatedBoxId()` untuk memuat nomor berdasarkan box.
+  - reset pilihan nomor dan folder
+  - load nomor sesuai box aktif
+- `updatedNumberId()` untuk memuat folder berdasarkan nomor.
+  - reset pilihan folder
+  - load folder sesuai nomor aktif
+- `resetForm()` untuk mengosongkan field.
+  - kosongkan seluruh input form
+  - reset file upload dan error state
+- `save()` untuk menyimpan dokumen baru.
+  - validasi semua field dokumen
+  - simpan file jika ada
+  - insert data ke tabel `documents`
+  - set status dokumen aktif
+- `update()` untuk memperbarui data dokumen.
+  - validasi perubahan data
+  - update metadata, lokasi, atau file digital
+  - simpan audit perubahan
+- `uploadFile()` untuk menangani file digital.
+  - validasi tipe dan ukuran file
+  - menyimpan file ke storage yang sesuai
+
+#### H. CRUD Hapus Dokumen
+
+Komponen: `Document/DocumentDeleteConfirm`
+
+- `mount($documentId)` untuk memuat data dokumen yang akan dihapus.
+  - mengambil detail dokumen berdasarkan ID
+  - menampilkan ringkasan sebelum hapus
+- `render()` untuk menampilkan dialog konfirmasi.
+  - menampilkan nama dokumen dan peringatan hapus
+- `confirmDelete()` untuk menjalankan proses hapus.
+  - mengubah status dokumen menjadi `DELETED` atau soft delete
+  - mencatat waktu dan user yang menghapus
+- `cancel()` untuk membatalkan penghapusan.
+  - menutup dialog dan mengembalikan state awal
+
+#### I. Laporan Dokumen
+
+Komponen: `Report/DocumentReport`
+
+- `mount()` untuk load filter awal.
+  - menyiapkan filter tanggal, jenis, kategori, dan lokasi
+- `render()` untuk menampilkan laporan.
+  - menampilkan rekap dokumen dalam tabel atau kartu statistik
+- `applyFilter()` untuk menerapkan filter laporan.
+  - memproses filter yang dipilih user
+  - menyusun query laporan
+- `resetFilter()` untuk menghapus filter.
+  - mengembalikan filter ke kondisi default
+- `exportPdf()` untuk export laporan ke PDF.
+  - menghasilkan file PDF dari data laporan aktif
+- `exportExcel()` untuk export laporan ke Excel.
+  - menghasilkan file Excel dari data laporan aktif
+
+### 28.12. Pola Fungsi yang Disarankan
+
+Setiap komponen CRUD sebaiknya mengikuti pola berikut:
+
+1. `mount()` untuk load data awal.
+2. `render()` untuk menampilkan view.
+3. `create()` atau `openCreate()` untuk mode tambah.
+4. `edit($id)` atau `openEdit($id)` untuk mode edit.
+5. `store()` atau `save()` untuk simpan data baru.
+6. `update()` untuk update data lama.
+7. `confirmDelete($id)` untuk konfirmasi hapus.
+8. `destroy()` atau `deleteDocument()` untuk hapus data.
+9. `resetForm()` untuk membersihkan state komponen.
+
+Pola ini membuat setiap CRUD lebih seragam, mudah dipelihara, dan lebih mudah dikembangkan ke tahap implementasi kode.
